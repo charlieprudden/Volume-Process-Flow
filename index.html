@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Volume — PCP Claim Lifecycle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --vol-black: #0a0a0a;
+    --vol-ink: #1a1a1a;
+    --vol-grey-900: #2a2a2a;
+    --vol-grey-700: #555;
+    --vol-grey-500: #888;
+    --vol-grey-300: #d8d8d8;
+    --vol-grey-100: #f4f4f4;
+    --vol-bg: #ffffff;
+
+    /* Volume brand colours (from logo mark) */
+    --vol-pink:   #f58bb9;
+    --vol-blue:   #74c4df;
+    --vol-yellow: #ddd96e;
+    --vol-orange: #f1ab53;
+    --vol-green:  #8bcf9e;
+    --vol-coral:  #fa7a79;
+    --vol-purple: #8b5cf6;
+    --vol-teal:   #14b8a6;
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 6px 24px rgba(0,0,0,0.08);
+    --shadow-lg: 0 20px 50px rgba(0,0,0,0.12);
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--vol-bg);
+    color: var(--vol-ink);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+
+  /* ===== Header ===== */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 40px;
+    border-bottom: 1px solid var(--vol-grey-300);
+    position: sticky;
+    top: 0;
+    background: rgba(255,255,255,0.94);
+    backdrop-filter: blur(10px);
+    z-index: 100;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+  }
+  .logo-mark {
+    width: 32px; height: 32px;
+    background: var(--vol-black);
+    border-radius: 6px;
+    display: grid; place-items: center;
+    color: white;
+    font-weight: 800;
+    font-size: 18px;
+  }
+  .topbar-meta {
+    font-size: 13px;
+    color: var(--vol-grey-700);
+    font-weight: 500;
+  }
+
+  /* ===== Hero ===== */
+  .hero {
+    padding: 60px 40px 30px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .hero h1 {
+    font-size: clamp(34px, 4.4vw, 58px);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    margin: 0 0 20px;
+    line-height: 1.02;
+    color: var(--vol-black);
+  }
+  .hero-mark {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 28px;
+    display: block;
+  }
+  .hero p {
+    font-size: 18px;
+    color: var(--vol-grey-700);
+    max-width: 760px;
+    margin: 0;
+  }
+  .hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 24px;
+    padding: 8px 14px;
+    background: var(--vol-grey-100);
+    border-radius: 999px;
+    font-size: 13px;
+    color: var(--vol-grey-700);
+    font-weight: 500;
+  }
+  .hint .pulse {
+    width: 8px; height: 8px;
+    background: var(--vol-pink);
+    border-radius: 50%;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.5; }
+  }
+
+  /* ===== Flow ===== */
+  .flow-wrapper {
+    padding: 30px 40px 60px;
+    max-width: 1400px;
+    margin: 0 auto;
+    overflow-y: visible;
+  }
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    padding: 20px 4px 40px;
+  }
+
+  .stage {
+    flex: 1 1 0;
+    min-width: 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .stage-card {
+    width: 100%;
+    background: white;
+    border: 2px solid var(--vol-grey-300);
+    border-radius: var(--radius);
+    padding: 22px 16px;
+    text-align: center;
+    transition: all 0.25s ease;
+    position: relative;
+    z-index: 2;
+  }
+  .stage-card:hover,
+  .stage.active .stage-card {
+    border-color: var(--stage-color, var(--vol-black));
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+  .stage-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--vol-grey-100);
+    color: var(--vol-grey-700);
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    transition: all 0.25s ease;
+  }
+  .stage:hover .stage-num,
+  .stage.active .stage-num {
+    background: var(--stage-color);
+    color: white;
+  }
+  .stage-icon {
+    width: 44px; height: 44px;
+    margin: 0 auto 12px;
+    display: grid; place-items: center;
+    color: var(--stage-color);
+    transition: transform 0.25s ease;
+  }
+  .stage:hover .stage-icon { transform: scale(1.1); }
+  .stage-icon svg { width: 100%; height: 100%; }
+
+  .stage-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--vol-ink);
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+  }
+  .stage-sub {
+    font-size: 11px;
+    color: var(--vol-grey-500);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  /* connector arrow */
+  .connector {
+    flex: 0 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .connector::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    top: 75px;
+    height: 2px;
+    background: var(--vol-grey-300);
+  }
+  .connector::after {
+    content: '';
+    position: absolute;
+    right: 4px;
+    top: 70px;
+    width: 0; height: 0;
+    border-left: 8px solid var(--vol-grey-500);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+  }
+
+  /* ===== Tooltip / Detail Panel ===== */
+  .tooltip {
+    position: absolute;
+    top: calc(100% + 18px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    width: 340px;
+    background: var(--vol-ink);
+    color: white;
+    border-radius: 14px;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 50;
+    box-shadow: var(--shadow-lg);
+    text-align: left;
+  }
+  .stage:hover .tooltip,
+  .stage.active .tooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+  }
+  .tooltip::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 16px; height: 16px;
+    background: var(--vol-ink);
+  }
+  .tooltip h4 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--stage-color);
+  }
+  .tooltip .tooltip-sub {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 14px;
+    font-weight: 600;
+  }
+  .tooltip p {
+    font-size: 13px;
+    color: rgba(255,255,255,0.85);
+    line-height: 1.55;
+    margin: 0 0 12px;
+  }
+  .tooltip ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.85);
+    line-height: 1.6;
+  }
+  .tooltip ul li { margin-bottom: 4px; }
+  .tooltip .tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.85);
+    border-radius: 999px;
+    margin: 2px 4px 2px 0;
+    letter-spacing: 0.02em;
+  }
+  .tooltip .tag.accent {
+    background: var(--stage-color);
+    color: white;
+  }
+  .tooltip-section {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .tooltip-section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.5);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  /* Adjust tooltip position for edge stages */
+  .stage:first-of-type .tooltip { left: 0; transform: translateX(0) translateY(-8px); }
+  .stage:first-of-type:hover .tooltip,
+  .stage:first-of-type.active .tooltip { transform: translateX(0) translateY(0); }
+  .stage:first-of-type .tooltip::before { left: 80px; }
+
+  .stage:last-of-type .tooltip { left: auto; right: 0; transform: translateX(0) translateY(-8px); }
+  .stage:last-of-type:hover .tooltip,
+  .stage:last-of-type.active .tooltip { transform: translateX(0) translateY(0); }
+  .stage:last-of-type .tooltip::before { left: auto; right: 80px; }
+
+  /* ===== Actors & Systems ===== */
+  .legend {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 60px 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    border-top: 1px solid var(--vol-grey-300);
+  }
+  .legend-block h3 {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--vol-grey-500);
+    margin: 0 0 20px;
+  }
+  .legend-grid {
+    display: grid;
+    gap: 14px;
+  }
+  .legend-item {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 16px;
+    background: var(--vol-grey-100);
+    border-radius: 12px;
+    transition: all 0.2s ease;
+  }
+  .legend-item:hover {
+    background: white;
+    box-shadow: var(--shadow-md);
+  }
+  .legend-dot {
+    flex: 0 0 10px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    margin-top: 6px;
+  }
+  .legend-text strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--vol-ink);
+    margin-bottom: 2px;
+  }
+  .legend-text span {
+    font-size: 13px;
+    color: var(--vol-grey-700);
+    line-height: 1.5;
+  }
+
+  /* ===== Footer ===== */
+  .footer {
+    background: var(--vol-black);
+    color: rgba(255,255,255,0.6);
+    padding: 30px 40px;
+    text-align: center;
+    font-size: 13px;
+  }
+  .footer strong { color: white; font-weight: 700; }
+
+  /* ===== Vertical layout (always) ===== */
+    .hero { padding: 40px 24px 20px; }
+    .hero h1 { font-size: clamp(28px, 6vw, 40px); }
+    .flow-wrapper { padding: 20px 24px 40px; overflow: visible; }
+    .topbar { padding: 18px 24px; }
+    .legend { grid-template-columns: 1fr; padding: 40px 24px; }
+
+    /* Hide the "hover to explore" hint — vertical mode shows everything */
+    .hint { display: none; }
+
+    /* Stack stages vertically */
+    .flow {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 8px 0 20px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .stage {
+      flex: 0 0 auto;
+      align-items: stretch;
+      cursor: default;
+      margin-bottom: 16px;
+    }
+    .stage:last-child { margin-bottom: 0; }
+    .stage-card {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      text-align: left;
+      padding: 16px 20px;
+      gap: 14px;
+      border-color: var(--stage-color);
+    }
+    /* Override hover transform on touch — no lift */
+    .stage-card:hover,
+    .stage.active .stage-card {
+      transform: none;
+      box-shadow: var(--shadow-md);
+    }
+    .stage-num {
+      flex: 0 0 32px;
+      width: 32px; height: 32px;
+      font-size: 13px;
+      margin-bottom: 0;
+      background: var(--stage-color);
+      color: white;
+    }
+    .stage-icon {
+      flex: 0 0 36px;
+      width: 36px; height: 36px;
+      margin: 0;
+    }
+    .stage-icon svg { width: 100%; height: 100%; }
+    .stage:hover .stage-icon { transform: none; }
+    .stage-title {
+      font-size: 16px;
+      flex: 1 1 auto;
+      text-align: left;
+    }
+    .stage-sub {
+      font-size: 12px;
+      margin-top: -8px;
+      flex: 0 0 100%;
+      text-align: left;
+      padding-left: 86px;
+      order: 10;
+    }
+
+    /* Connectors become vertical down-arrows between cards */
+    .connector { display: none; }
+    .stage:not(:last-child)::after {
+      content: '';
+      display: block;
+      width: 2px;
+      height: 24px;
+      background: var(--vol-grey-300);
+      margin: 4px auto 0;
+      position: relative;
+    }
+    .stage:not(:last-child) {
+      padding-bottom: 28px;
+      position: relative;
+    }
+    .stage:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0; height: 0;
+      border-top: 7px solid var(--vol-grey-500);
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      z-index: 2;
+    }
+
+    /* Tooltip: collapsed by default, expands on card hover or active state */
+    .tooltip {
+      position: static;
+      transform: none !important;
+      width: auto;
+      max-height: 0;
+      overflow: hidden;
+      padding-top: 0;
+      padding-bottom: 0;
+      margin-top: 0;
+      opacity: 0;
+      pointer-events: none;
+      box-shadow: none;
+      border-radius: 12px;
+      transition: max-height 0.35s ease, opacity 0.25s ease,
+                  padding 0.35s ease, margin-top 0.35s ease;
+    }
+    .stage:hover .tooltip,
+    .stage.active .tooltip {
+      max-height: 1200px;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      padding-top: 20px;
+      padding-bottom: 20px;
+      margin-top: 12px;
+    }
+    /* Hide the speech-bubble arrow in vertical mode */
+    .tooltip::before { display: none; }
+
+    /* Show a chevron indicator on the card */
+    .stage-card { cursor: pointer; }
+    .stage-card::after {
+      content: '';
+      width: 10px;
+      height: 10px;
+      border-right: 2px solid var(--vol-grey-500);
+      border-bottom: 2px solid var(--vol-grey-500);
+      transform: rotate(45deg);
+      margin-right: 8px;
+      flex-shrink: 0;
+      transition: transform 0.3s ease;
+      order: 5;
+      align-self: center;
+    }
+    .stage:hover .stage-card::after,
+    .stage.active .stage-card::after {
+      transform: rotate(-135deg);
+      border-color: var(--stage-color);
+    }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo">
+    <span>Volume</span>
+  </div>
+  <div class="topbar-meta">PCP Claim Lifecycle · Process Flow</div>
+</header>
+
+<section class="hero">
+  <svg class="hero-mark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <g style="mix-blend-mode: multiply;">
+      <circle cx="50" cy="32" r="22" fill="#74c4df" opacity="0.85"/>
+      <circle cx="68" cy="42" r="22" fill="#8bcf9e" opacity="0.85"/>
+      <circle cx="68" cy="62" r="22" fill="#f1ab53" opacity="0.85"/>
+      <circle cx="50" cy="72" r="22" fill="#f58bb9" opacity="0.85"/>
+      <circle cx="32" cy="62" r="22" fill="#fa7a79" opacity="0.85"/>
+      <circle cx="32" cy="42" r="22" fill="#ddd96e" opacity="0.85"/>
+    </g>
+  </svg>
+  <h1>The claim lifecycle,<br>powered by Volume.</h1>
+  <p>An end-to-end view of how claims move through the Volume platform — from onboarding through to payment and closure.</p>
+  <div class="hint">
+    <span class="pulse"></span>
+    Hover or tap any stage to explore
+  </div>
+</section>
+
+<div class="flow-wrapper">
+  <div class="flow">
+
+    <!-- 1. Onboarding -->
+    <div class="stage" style="--stage-color: var(--vol-pink);">
+      <div class="stage-card">
+        <div class="stage-num">01</div>
+        <div class="stage-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="8.5" cy="7" r="4"/>
+            <line x1="20" y1="8" x2="20" y2="14"/>
+            <line x1="23" y1="11" x2="17" y2="11"/>
+          </svg>
+        </div>
+        <div class="stage-title">Onboarding</div>
+        <div class="stage-sub">Capture & verify</div>
+      </div>
+      <div class="tooltip">
+        <div class="tooltip-sub">Stage 01</div>
+        <h4>Onboarding</h4>
+        <p>Multiple pathways into Volume — clients choose what fits their funnel.</p>
+        <div class="tooltip-section">
+          <div class="tooltip-section-title">Onboarding options</div>
+          <ul>
+            <li>Introducer sites push fully credit-checked data into Volume via API</li>
+            <li>Volume handles onboarding directly via API with built-in CRA integrations</li>
+            <li>Document generation available where needed</li>
+            <li>Customer criteria matching applied against agreements</li>
+          </ul>
+        </div>
+        <div class="tooltip-section">
+          <div class="tooltip-section-title">Post-onboarding</div>
+          <p style="margin:0;">Configurable due-diligence sampling across claimants and claim data. Claimants then invited to the Client Portal for documents and status updates.</p>
+        </div>
+      </div>
+    </div>
+    <div class="connector"></div>
+
+    <!-- 2. Response & Comms -->
+    <div class="stage" style="--stage-color: var(--vol-orange);">
+      <div class="stage-card">
+        <div class="stage-num">02</div>
+        <div class="stage-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <div class="stage-title">Response & Comms</div>
+        <div class="stage-sub">LOC + triage</div>
+      </div>
+      <div class="tooltip">
+        <div class="tooltip-sub">Stage 02</div>
+        <h4>Response &amp; Comms</h4>
+        <p>Once due diligence is complete, the Letter of Claim is submitted to the lender. Volume's triage system then processes all inbound lender correspondence.</p>
+        <div class="tooltip-section">
+          <div class="tooltip-section-title">Auto-classified types</div>
+          <div>
+            <span class="tag">Acknowledgement</span>
+            <span class="tag">Pre-acknowledgement</span>
+            <span class="tag">Already represented</span>
+            <span class="tag">Defendant query</span>
+            <span class="tag">Final response</span>
+            <span class="tag">Customer query</span>
+            <span class="tag">Investigation update</span>
+          </div>
+        </div>
+        <div class="tooltip-section">
+          <p style="margin:0;">Each item is classified by the triage component and actioned with the appropriate downstream workflow.</p>
+        </div>
+      </div>
+    </div>
+    <div class="connector"></div>
+
+    <!-- 3. Bank Details -->
+    <div class="stage" style="--stage-color: var(--vol-yellow);">
+      <div class="stage-card">
+        <div class="stage-num">03</div>
+        <div class="stage-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="5" width="20" height="14" rx="2"/>
+            <line x1="2" y1="10" x2="22" y2="10"/>
+            <path d="M7 15h2"/>
+          </svg>
+        </div>
+        <div class="stage-title">Bank Details</div>
+        <div class="stage-sub">Collect & verify</div>
+      </div>
+      <div class="tooltip">
+        <div class="tooltip-sub">Stage 03</div>
+        <h4>Bank Details Collection</h4>
+        <p>A secure, standardised journey within the Client Portal — claimants are invited to log in and complete bank capture using one of two routes.</p>
+        <div class="tooltip-section">
+          <div class="tooltip-section-title">Verification routes</div>
+          <ul>
+            <li><strong>Open Banking</strong> — proves account ownership through the authorisation mechanism</li>
+            <li><strong>Statement upload + CoP</strong> — extraction plus Confirmation of Payee to match name on account</li>
+          </ul>
+        </div>
+        <div class="tooltip-section">
+          <p style="margin:0;">Exceptions (partial or failed matches) are handled through clear evidence-submission flows. All attempts and outcomes are recorded for audit.</p>
+        </div>
+      </div>
+    </div>
+    <div class="connector"></div>
+
+    <!-- 4. Decision & Offer -->
+    <div class="stage" style="--stage-color: var(--vol-blue);">
+      <div class="stage-card">
+        <div class="stage-num">04</div>
+        <div class="stage-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="9" y1="14" x2="15" y2="14"/>
+            <line x1="9" y1="18" x2="13" y2="18"/>
+          </svg>
+        </div>
+        <div class="stage-title">Decision & Offer</div>
+        <div class="stage-sub">AI extraction</div>
+      </div>
+      <div class="tooltip">
+        <div class="tooltip-sub">Stage 04</div>
+        <h4>Decision &amp; Offer</h4>
+        <p>Lender decisions arrive primarily as PDF email attachments into the Volume triage system. AI integration extracts the structured fields.</p>
+        <div class="tooltip-section">
+          <div class="tooltip-section-title">Inbound channels</div>
+          <div>
+            <span class="tag">Direct email</span>
+            <span class="tag">Shared folder</span>
+            <span class="tag">Outsourcing partners</span>
+            <span class="tag">Scanned PDF</span>
+            <span class="tag">Text-based PDF</span>
+          </div>
+        </div>
+        <div class="tooltip-section">
+          <div class="tooltip-section-title">Calculation drivers</div>
+          <p style="margin:0;">Workflow derives final net payable considering arrears, set-off, interest, tax on interest, law firm fees and VAT — feeding directly into the Advice Report.</p>
+        </div>
+        <div class="tooltip-section">
+          <div class="tooltip-section-title">Advice Report</div>
+          <p style="margin:0;">Auto-generated using existing document generation — clearly summarises the decision, compares lender vs. firm calculation, shows transparent breakdown, and recommends accept or challenge.</p>
+        </div>
+      </div>
+    </div>
+    <div class="connector"></div>
+
+    <!-- 5. Offer Acceptance -->
+    <div class="stage" style="--stage-color: var(--vol-coral);">
+      <div class="stage-card">
+        <div class="stage-num">05</div>
+        <div class="stage-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <div class="stage-title">Offer Acceptance</div>
+        <div class="stage-sub">Client Portal</div>
+      </div>
+      <div class="tooltip">
+        <div class="tooltip-sub">Stage 05</div>
+        <h4>Offer Acceptance</h4>
+        <p>Once the Advice Report is generated, the claimant receives an Email and SMS with a Call to Action (CTA) linking to the Client Portal.</p>
+        <div class="tooltip-section">
+          <div class="tooltip-section-title">In-portal journey</div>
+          <ul>
+            <li>Review the lender decision</li>
+            <li>Review the Advice Report</li>
+            <li>See the net amount receivable</li>
+            <li>Confirm bank details &amp; acknowledge legal advice</li>
+            <li>Signature capture where lender requires</li>
+            <li>Accept — or query with the legal team</li>
+          </ul>
+        </div>
+        <div class="tooltip-section">
+          <p style="margin:0;">Configurable follow-up campaigns maximise acceptance rates. On acceptance, Volume automatically notifies the lender.</p>
+        </div>
+      </div>
+    </div>
+    <div class="connector"></div>
+
+    <!-- 6. Payment & Settlement -->
+    <div class="stage" style="--stage-color: var(--vol-green);">
+      <div class="stage-card">
+        <div class="stage-num">06</div>
+        <div class="stage-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="1" x2="12" y2="23"/>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+        </div>
+        <div class="stage-title">Payment & Settlement</div>
+        <div class="stage-sub">Reconcile & pay</div>
+      </div>
+      <div class="tooltip">
+        <div class="tooltip-sub">Stage 06</div>
+        <h4>Payment &amp; Settlement</h4>
+        <p>Triage ingests lender remittance advice and creates expected transactions — a forward-looking view of inbound funds.</p>
+        <div class="tooltip-section">
+          <div class="tooltip-section-title">Reconciliation flow</div>
+          <ul>
+            <li>PSP (incl. client account services) notifies Volume of arriving funds via API</li>
+            <li>Workflows reconcile against expected payments</li>
+            <li>Calculations re-run — actual receipt often higher due to interest</li>
+            <li>Volume instructs &amp; authorises payment out to claimant and law firm</li>
+            <li>Generate invoice</li>
+            <li>Xero integration</li>
+          </ul>
+        </div>
+        <div class="tooltip-section">
+          <div class="tooltip-section-title">Provider</div>
+          <p style="margin:0;"><strong style="color:var(--vol-green);">Shieldpay</strong> for initial implementation via escrow model. Underlying model is provider-agnostic and reusable across markets.</p>
+        </div>
+      </div>
+    </div>
+    <div class="connector"></div>
+
+    <!-- 7. Closure -->
+    <div class="stage" style="--stage-color: var(--vol-black);">
+      <div class="stage-card">
+        <div class="stage-num">07</div>
+        <div class="stage-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        </div>
+        <div class="stage-title">Closure</div>
+        <div class="stage-sub">Audit & archive</div>
+      </div>
+      <div class="tooltip">
+        <div class="tooltip-sub">Stage 07</div>
+        <h4>Closure</h4>
+        <p>Once payments are settled and reconciled, the claim moves to closure — completing the audit trail and producing the final ledger entries.</p>
+        <div class="tooltip-section">
+          <div class="tooltip-section-title">At closure</div>
+          <ul>
+            <li>Claimant ledger updated &amp; balanced</li>
+            <li>All correspondence, decisions and payments linked to the case record</li>
+            <li>Case archived with full auditable history</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Actors & Systems -->
+<section class="legend">
+
+  <div class="legend-block">
+    <h3>Key Actors</h3>
+    <div class="legend-grid">
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--vol-pink);"></div>
+        <div class="legend-text">
+          <strong>Claimant</strong>
+          <span>Submits the claim through an introducer onboarding channel.</span>
+        </div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--vol-orange);"></div>
+        <div class="legend-text">
+          <strong>Introducer</strong>
+          <span>Builds the marketing funnel to onboard claimants.</span>
+        </div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--vol-black);"></div>
+        <div class="legend-text">
+          <strong>Volume</strong>
+          <span>The system operated by the Law Firm — case management, triage, calculations, payments.</span>
+        </div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--vol-blue);"></div>
+        <div class="legend-text">
+          <strong>Lender</strong>
+          <span>Car finance provider — receives the claim, makes a decision, sends payment.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend-block">
+    <h3>Systems</h3>
+    <div class="legend-grid">
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--vol-black);"></div>
+        <div class="legend-text">
+          <strong>Volume</strong>
+          <span>The case management platform — workflows, triage, AI extraction, calculations, reconciliation.</span>
+        </div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--vol-yellow);"></div>
+        <div class="legend-text">
+          <strong>Client Portal</strong>
+          <span>Part of Volume — claimant-facing portal for documents, status updates, bank details, and offer acceptance.</span>
+        </div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--vol-green);"></div>
+        <div class="legend-text">
+          <strong>Shieldpay</strong>
+          <span>Payment Service Provider — escrow-based payments out to claimant and law firm (provider-agnostic model).</span>
+        </div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--vol-coral);"></div>
+        <div class="legend-text">
+          <strong>CRA Integrations</strong>
+          <span>Credit Reference Agency hooks used during onboarding and document generation.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <strong>Volume Technology</strong> &middot; PCP Claim Lifecycle &middot; Process Flow
+</footer>
+
+<script>
+  // Click-to-toggle: works on touch devices and on mouse devices in vertical mode.
+  // On wide horizontal layout, hover handles it natively.
+  document.querySelectorAll('.stage').forEach(stage => {
+    stage.addEventListener('click', (e) => {
+      const isVertical = window.matchMedia('(max-width: 1400px)').matches;
+      const isTouchOnly = window.matchMedia('(hover: none)').matches;
+      if (isVertical || isTouchOnly) {
+        document.querySelectorAll('.stage.active').forEach(s => {
+          if (s !== stage) s.classList.remove('active');
+        });
+        stage.classList.toggle('active');
+        e.stopPropagation();
+      }
+    });
+  });
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.stage.active').forEach(s => s.classList.remove('active'));
+  });
+</script>
+
+</body>
+</html>

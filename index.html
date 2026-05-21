@@ -134,19 +134,20 @@
     padding: 30px 40px 540px;
     max-width: 1400px;
     margin: 0 auto;
-    overflow-x: auto;
     overflow-y: visible;
   }
+  /* On narrow screens we override the bottom padding in the media query */
   .flow {
     display: flex;
     align-items: stretch;
     gap: 0;
-    min-width: max-content;
+    width: 100%;
     padding: 20px 4px 40px;
   }
 
   .stage {
-    flex: 0 0 180px;
+    flex: 1 1 0;
+    min-width: 0;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -215,7 +216,7 @@
 
   /* connector arrow */
   .connector {
-    flex: 0 0 50px;
+    flex: 0 0 32px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -225,21 +226,19 @@
     content: '';
     position: absolute;
     left: 0; right: 0;
-    top: 50%;
+    top: 75px;
     height: 2px;
-    background: linear-gradient(90deg, var(--vol-grey-300), var(--vol-grey-300));
-    transform: translateY(-50%);
+    background: var(--vol-grey-300);
   }
   .connector::after {
     content: '';
     position: absolute;
-    right: 6px;
-    top: 50%;
+    right: 4px;
+    top: 70px;
     width: 0; height: 0;
     border-left: 8px solid var(--vol-grey-500);
     border-top: 5px solid transparent;
     border-bottom: 5px solid transparent;
-    transform: translateY(-50%);
   }
 
   /* ===== Tooltip / Detail Panel ===== */
@@ -407,11 +406,153 @@
   }
   .footer strong { color: white; font-weight: 700; }
 
-  @media (max-width: 768px) {
+  /* ===== Responsive: vertical layout below 1400px ===== */
+  @media (max-width: 1400px) {
     .hero { padding: 40px 24px 20px; }
-    .flow-wrapper { padding: 20px 24px 60px; }
-    .legend { grid-template-columns: 1fr; padding: 40px 24px; }
+    .hero h1 { font-size: clamp(28px, 6vw, 40px); }
+    .flow-wrapper { padding: 20px 24px 40px; overflow: visible; }
     .topbar { padding: 18px 24px; }
+    .legend { grid-template-columns: 1fr; padding: 40px 24px; }
+
+    /* Hide the "hover to explore" hint — vertical mode shows everything */
+    .hint { display: none; }
+
+    /* Stack stages vertically */
+    .flow {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 8px 0 20px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .stage {
+      flex: 0 0 auto;
+      align-items: stretch;
+      cursor: default;
+      margin-bottom: 16px;
+    }
+    .stage:last-child { margin-bottom: 0; }
+    .stage-card {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      text-align: left;
+      padding: 16px 20px;
+      gap: 14px;
+      border-color: var(--stage-color);
+    }
+    /* Override hover transform on touch — no lift */
+    .stage-card:hover,
+    .stage.active .stage-card {
+      transform: none;
+      box-shadow: var(--shadow-md);
+    }
+    .stage-num {
+      flex: 0 0 32px;
+      width: 32px; height: 32px;
+      font-size: 13px;
+      margin-bottom: 0;
+      background: var(--stage-color);
+      color: white;
+    }
+    .stage-icon {
+      flex: 0 0 36px;
+      width: 36px; height: 36px;
+      margin: 0;
+    }
+    .stage-icon svg { width: 100%; height: 100%; }
+    .stage:hover .stage-icon { transform: none; }
+    .stage-title {
+      font-size: 16px;
+      flex: 1 1 auto;
+      text-align: left;
+    }
+    .stage-sub {
+      font-size: 12px;
+      margin-top: -8px;
+      flex: 0 0 100%;
+      text-align: left;
+      padding-left: 86px;
+      order: 10;
+    }
+
+    /* Connectors become vertical down-arrows between cards */
+    .connector { display: none; }
+    .stage:not(:last-child)::after {
+      content: '';
+      display: block;
+      width: 2px;
+      height: 24px;
+      background: var(--vol-grey-300);
+      margin: 4px auto 0;
+      position: relative;
+    }
+    .stage:not(:last-child) {
+      padding-bottom: 28px;
+      position: relative;
+    }
+    .stage:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0; height: 0;
+      border-top: 7px solid var(--vol-grey-500);
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      z-index: 2;
+    }
+
+    /* Tooltip: collapsed by default, expands on card hover or active state */
+    .tooltip {
+      position: static;
+      transform: none !important;
+      width: auto;
+      max-height: 0;
+      overflow: hidden;
+      padding-top: 0;
+      padding-bottom: 0;
+      margin-top: 0;
+      opacity: 0;
+      pointer-events: none;
+      box-shadow: none;
+      border-radius: 12px;
+      transition: max-height 0.35s ease, opacity 0.25s ease,
+                  padding 0.35s ease, margin-top 0.35s ease;
+    }
+    .stage:hover .tooltip,
+    .stage.active .tooltip {
+      max-height: 1200px;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      padding-top: 20px;
+      padding-bottom: 20px;
+      margin-top: 12px;
+    }
+    /* Hide the speech-bubble arrow in vertical mode */
+    .tooltip::before { display: none; }
+
+    /* Show a chevron indicator on the card */
+    .stage-card { cursor: pointer; }
+    .stage-card::after {
+      content: '';
+      width: 10px;
+      height: 10px;
+      border-right: 2px solid var(--vol-grey-500);
+      border-bottom: 2px solid var(--vol-grey-500);
+      transform: rotate(45deg);
+      margin-right: 8px;
+      flex-shrink: 0;
+      transition: transform 0.3s ease;
+      order: 5;
+      align-self: center;
+    }
+    .stage:hover .stage-card::after,
+    .stage.active .stage-card::after {
+      transform: rotate(-135deg);
+      border-color: var(--stage-color);
+    }
   }
 </style>
 </head>
@@ -419,7 +560,6 @@
 
 <header class="topbar">
   <div class="logo">
-    <div class="logo-mark">V</div>
     <span>Volume</span>
   </div>
   <div class="topbar-meta">PCP Claim Lifecycle · Process Flow</div>
@@ -437,7 +577,7 @@
     </g>
   </svg>
   <h1>The claim lifecycle,<br>powered by Volume.</h1>
-  <p>An end-to-end view of how claims move through the Volume platform — from onboarding through to payment and closure. Hover any stage to reveal the detail.</p>
+  <p>An end-to-end view of how claims move through the Volume platform — from onboarding through to payment and closure.</p>
   <div class="hint">
     <span class="pulse"></span>
     Hover or tap any stage to explore
@@ -606,7 +746,7 @@
       <div class="tooltip">
         <div class="tooltip-sub">Stage 05</div>
         <h4>Offer Acceptance</h4>
-        <p>Once the Advice Report is generated, the claimant receives an Email and SMS with a CTA linking to the Client Portal.</p>
+        <p>Once the Advice Report is generated, the claimant receives an Email and SMS with a Call to Action (CTA) linking to the Client Portal.</p>
         <div class="tooltip-section">
           <div class="tooltip-section-title">In-portal journey</div>
           <ul>
@@ -649,6 +789,8 @@
             <li>Workflows reconcile against expected payments</li>
             <li>Calculations re-run — actual receipt often higher due to interest</li>
             <li>Volume instructs &amp; authorises payment out to claimant and law firm</li>
+            <li>Generate invoice</li>
+            <li>Xero integration</li>
           </ul>
         </div>
         <div class="tooltip-section">
@@ -679,7 +821,6 @@
         <div class="tooltip-section">
           <div class="tooltip-section-title">At closure</div>
           <ul>
-            <li>Final invoice raised</li>
             <li>Claimant ledger updated &amp; balanced</li>
             <li>All correspondence, decisions and payments linked to the case record</li>
             <li>Case archived with full auditable history</li>
@@ -768,11 +909,13 @@
 </footer>
 
 <script>
-  // Tap-to-toggle for touch devices
+  // Click-to-toggle: works on touch devices and on mouse devices in vertical mode.
+  // On wide horizontal layout, hover handles it natively.
   document.querySelectorAll('.stage').forEach(stage => {
     stage.addEventListener('click', (e) => {
-      // Only toggle on touch / small screens
-      if (window.matchMedia('(hover: none)').matches) {
+      const isVertical = window.matchMedia('(max-width: 1400px)').matches;
+      const isTouchOnly = window.matchMedia('(hover: none)').matches;
+      if (isVertical || isTouchOnly) {
         document.querySelectorAll('.stage.active').forEach(s => {
           if (s !== stage) s.classList.remove('active');
         });

@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Volume — Prototypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* Volume brand palette */
+    --v-brand:        #DFDA70; /* yellow */
+    --v-brand-faded:  #FEFAAE;
+    --v-code:         #F48BBA; /* pink */
+    --v-code-faded:   #F9CBE0;
+    --v-design:       #97DEAE; /* green */
+    --v-design-faded: #C8FBD9;
+    --v-audio:        #76C5E0; /* blue */
+    --v-audio-faded:  #BDEDFD;
+    --v-video:        #F1AA51; /* orange */
+    --v-video-faded:  #FFE1BC;
+    --v-prod:         #555555; /* dark grey */
+    --ink:            #111111;
+    --paper:          #FAFAFA;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 3rem 2rem 1rem;
+    text-align: center;
+  }
+  .wordmark {
+    font-size: clamp(3rem, 10vw, 6rem);
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    margin: 0;
+  }
+  .wordmark .dot { color: var(--v-code); }
+  .tagline {
+    margin: 0.75rem 0 0;
+    font-size: 1.05rem;
+    color: #555;
+    font-weight: 500;
+  }
+
+  main {
+    flex: 1;
+    padding: 3rem 1.5rem 4rem;
+    max-width: 72rem;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .panel-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  @media (min-width: 720px) {
+    .panel-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 18rem;
+    padding: 2rem;
+    border-radius: 1.25rem;
+    color: var(--ink);
+    text-decoration: none;
+    border: 2px solid var(--ink);
+    box-shadow: 6px 6px 0 var(--ink);
+    transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 9px 9px 0 var(--ink);
+  }
+  .panel:active {
+    transform: translate(2px, 2px);
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+
+  .panel-process { background: var(--v-brand); }
+  .panel-process:hover { background: var(--v-brand-faded); }
+
+  .panel-scaff { background: var(--v-code); }
+  .panel-scaff:hover { background: var(--v-code-faded); }
+
+  .panel-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.7rem;
+    background: var(--ink);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 9999px;
+    align-self: flex-start;
+  }
+  .panel-title {
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin: 1.25rem 0 0.5rem;
+  }
+  .panel-desc {
+    font-size: 1rem;
+    line-height: 1.5;
+    margin: 0;
+    max-width: 30ch;
+    color: rgba(0,0,0,0.78);
+  }
+  .panel-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.75rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  .panel-cta svg {
+    transition: transform .15s ease;
+  }
+  .panel:hover .panel-cta svg {
+    transform: translateX(4px);
+  }
+
+  /* Decorative palette strip */
+  .palette {
+    display: flex;
+    margin: 4rem auto 0;
+    max-width: 28rem;
+    border: 2px solid var(--ink);
+    border-radius: 9999px;
+    overflow: hidden;
+    height: 1.25rem;
+  }
+  .palette span { flex: 1; display: block; }
+
+  footer {
+    padding: 1.5rem;
+    text-align: center;
+    color: #777;
+    font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 class="wordmark">Volume<span class="dot">.</span></h1>
+  <p class="tagline">Internal prototypes &amp; process</p>
+</header>
+
+<main>
+  <div class="panel-grid">
+
+    <a class="panel panel-process" href="volumeprocess.html">
+      <div>
+        <span class="panel-eyebrow">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          Process
+        </span>
+        <h2 class="panel-title">Volume Process</h2>
+        <p class="panel-desc">How we run engagements end-to-end — discovery, build, handover.</p>
+      </div>
+      <span class="panel-cta">
+        Open
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+      </span>
+    </a>
+
+    <a class="panel panel-scaff" href="SCAFFGUARD.html">
+      <div>
+        <span class="panel-eyebrow">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+          Prototype
+        </span>
+        <h2 class="panel-title">ScaffGuard</h2>
+        <p class="panel-desc">Mobile scaffolding compliance &amp; certification management — clickable demo.</p>
+      </div>
+      <span class="panel-cta">
+        Open
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+      </span>
+    </a>
+
+  </div>
+
+  <div class="palette" aria-hidden="true">
+    <span style="background:#DFDA70"></span>
+    <span style="background:#F48BBA"></span>
+    <span style="background:#97DEAE"></span>
+    <span style="background:#76C5E0"></span>
+    <span style="background:#F1AA51"></span>
+    <span style="background:#555555"></span>
+  </div>
+</main>
+
+<footer>
+  &copy; Volume
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,1414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ScaffGuard — Auth, Identity &amp; Offline Sync (Android · iOS · Web)</title>
+<!-- No web-font request: renders fully offline. IBM Plex is used if installed/cached, else a system stack. -->
+<style>
+  :root{
+    --bg:#f5f6f7; --surface:#ffffff; --surface-2:#eef1f4;
+    --line:#e3e7eb; --line-2:#d3d9df; --text:#1f2933; --muted:#69727d;
+    --net:#1f6fb2; --net-ink:#185a92; --net-soft:#e9f2f9; --net-line:#bcd8ec;
+    --dev:#5b6672; --dev-soft:#eef1f4; --dev-line:#d6dce2;
+    --ok:#1f7a46; --fail:#b14430; --warn:#a8651b;
+    --andro:#3a8e5f; --ios:#3457b8; --web:#6f4bb0;
+    --radius:12px;
+    --mono:"IBM Plex Mono",ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,"Liberation Mono",monospace;
+    --ui:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui);line-height:1.58;-webkit-font-smoothing:antialiased;font-size:15px}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px 90px}
+  .masthead{height:4px;background:var(--text)}
+
+  header{padding:42px 0 24px;border-bottom:1px solid var(--line)}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--net-ink)}
+  h1{font-weight:700;font-size:clamp(40px,7vw,62px);line-height:1.02;margin:.16em 0 .12em;letter-spacing:-.02em}
+  h1 .g{color:var(--net)}
+  .sub{color:var(--muted);max-width:68ch;font-size:15.5px;margin:0}
+
+  .model{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:stretch;margin:28px 0 6px}
+  .node{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+  .node h4{margin:0 0 6px;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;font-weight:600;font-family:var(--mono)}
+  .node.phone h4{color:var(--dev)} .node.server h4{color:var(--net-ink)}
+  .node p{margin:0;font-size:13.5px;color:var(--muted)}
+  .key{display:inline-block;font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:6px;margin-top:10px;border:1px solid}
+  .key.priv{color:var(--dev);border-color:var(--dev-line);background:var(--dev-soft)}
+  .key.priv.soft{color:var(--web);border-color:#d8cce9;background:#f2edf8}
+  .key.pub{color:var(--net-ink);border-color:var(--net-line);background:var(--net-soft)}
+  .arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);min-width:78px;text-align:center}
+  .arrow .line{font-family:var(--mono);font-size:10.5px}
+  .arrow .big{font-size:24px;color:var(--net);line-height:1}
+  .modelcap{font-size:12.5px;color:var(--muted);margin:14px 0 0;border-left:2px solid var(--net);padding-left:12px}
+
+  .platrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:22px}
+  .platsel{display:inline-flex;background:var(--surface);border:1px solid var(--line-2);border-radius:10px;padding:3px}
+  .platsel.faded{opacity:.4;pointer-events:none}
+  .pseg{cursor:pointer;font-family:var(--ui);font-weight:600;font-size:14px;border:0;background:transparent;color:var(--muted);padding:7px 16px;border-radius:8px;transition:.15s;display:flex;align-items:center;gap:7px}
+  .pseg .pd{width:8px;height:8px;border-radius:50%}
+  .pseg[data-p="android"] .pd{background:var(--andro)} .pseg[data-p="ios"] .pd{background:var(--ios)} .pseg[data-p="web"] .pd{background:var(--web)}
+  .pseg[aria-selected="true"]{background:var(--surface-2);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .pstack{font-family:var(--mono);font-size:11.5px;color:var(--muted);flex:1;min-width:240px}
+  .pstack b{color:var(--text);font-weight:500}
+
+  .bar{position:sticky;top:0;z-index:20;background:rgba(245,246,247,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin-top:16px;padding:11px 0;display:flex;flex-wrap:wrap;gap:9px;align-items:stretch}
+  .tabs{display:flex;gap:7px;flex:1;min-width:280px;flex-wrap:wrap}
+  .tab{cursor:pointer;background:var(--surface);border:1px solid var(--line-2);color:var(--muted);border-radius:9px;padding:9px 13px;text-align:left;font-family:var(--ui);transition:.16s}
+  .tab b{display:block;font-size:14px;color:var(--text);font-weight:600}
+  .tab span{font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase}
+  .tab[aria-selected="true"]{border-color:var(--net);box-shadow:inset 0 -2px 0 var(--net)}
+  .tab[aria-selected="true"] span{color:var(--net-ink)}
+  .tab.x[aria-selected="true"]{border-color:var(--text);box-shadow:inset 0 -2px 0 var(--text)}
+  .tab.home[aria-selected="true"]{border-color:var(--text);box-shadow:inset 0 -2px 0 var(--text)}
+  .tabgroup{align-self:center;font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:0 6px 0 9px;border-left:1px solid var(--line-2);margin-left:3px}
+
+  /* page header (shown on every view, home included) */
+  .pagehead{margin:18px 0 12px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+  .ph-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px}
+  .ph-back{cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--net-ink);border:1px solid var(--line-2);border-radius:7px;padding:6px 11px;background:var(--surface);text-decoration:none;white-space:nowrap}
+  .ph-back:hover{border-color:var(--net)}
+  .ph-crumb{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .ph-title{margin:0;font-size:clamp(26px,4.6vw,34px);font-weight:700;letter-spacing:-.02em;line-height:1.08}
+  .ph-desc{margin:7px 0 0;color:var(--muted);font-size:14.5px;max-width:76ch}
+  .crumb-plat{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;border:1px solid;border-radius:7px;padding:4px 9px}
+  .crumb-plat .pd{width:7px;height:7px;border-radius:50%}
+  .ph-meta .crumb-plat{margin-left:auto}
+  .toc-lead{color:var(--muted);font-size:14px;margin:0 0 4px;max-width:82ch}
+
+  /* contents page */
+  .toc-group{margin-top:20px}
+  .toc-glabel{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text);margin-bottom:10px}
+  .toc-glabel span{color:var(--muted);letter-spacing:.02em;text-transform:none;font-size:11px}
+  .toc-list{display:flex;flex-direction:column;gap:8px}
+  .toc-item{display:flex;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:13px 16px;cursor:pointer;transition:.15s;width:100%;text-align:left;font-family:inherit;color:inherit}
+  .toc-item:hover{border-color:var(--net);transform:translateX(2px)}
+  .toc-num{font-family:var(--mono);font-weight:600;font-size:14px;color:var(--net-ink);width:26px;flex:0 0 26px;text-align:center}
+  .toc-tx{flex:1} .toc-h{display:block;font-size:15px;font-weight:600} .toc-d{display:block;margin-top:2px;font-size:13px;color:var(--muted)}
+  .toc-item .go{margin-left:auto;color:var(--muted);font-size:22px;line-height:1}
+  .tab .prop{display:inline-block;font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;background:var(--surface-2);border:1px solid var(--line-2);color:var(--muted);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:1px}
+  .btn{cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;background:var(--surface);border:1px solid var(--line-2);color:var(--text);border-radius:9px;padding:0 13px;transition:.15s;white-space:nowrap}
+  .btn:hover{border-color:var(--net);color:var(--net-ink)}
+  .btn.go{background:var(--net);color:#fff;border-color:var(--net)} .btn.go:hover{filter:brightness(1.06);color:#fff}
+  .btn.menu{font-weight:700;padding:0 15px}
+  .barhere{flex:1;min-width:0;font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;align-self:center}
+  .barhere b{color:var(--text);font-family:var(--ui);font-weight:600;font-size:13px;text-transform:none;letter-spacing:0}
+
+  /* drawer nav */
+  #backdrop{position:fixed;inset:0;background:rgba(15,22,32,.42);opacity:0;pointer-events:none;transition:opacity .2s;z-index:90}
+  #drawer{position:fixed;top:0;left:0;bottom:0;width:308px;max-width:84vw;background:var(--surface);border-right:1px solid var(--line);transform:translateX(-104%);transition:transform .22s ease;z-index:100;display:flex;flex-direction:column;box-shadow:0 0 44px rgba(0,0,0,.16)}
+  body.drawer-open #backdrop{opacity:1;pointer-events:auto}
+  body.drawer-open #drawer{transform:none}
+  .drawerhead{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);font-weight:600;font-size:15px}
+  .dclose{cursor:pointer;border:0;background:transparent;font-size:16px;color:var(--muted);line-height:1}
+  .dclose:hover{color:var(--text)}
+  .drawerbody{padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+  .navgroup{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text);padding:16px 8px 6px}
+  .navgroup span{color:var(--muted);letter-spacing:.02em;text-transform:none}
+  .navitem{display:flex;align-items:center;gap:12px;text-align:left;cursor:pointer;background:transparent;border:1px solid transparent;border-radius:9px;padding:10px 12px;font-family:var(--ui);color:var(--text);transition:.14s;width:100%}
+  .navitem:hover{background:var(--surface-2)}
+  .navitem[aria-selected="true"]{background:var(--net-soft);border-color:var(--net-line)}
+  .ni-num{font-family:var(--mono);font-weight:600;font-size:13px;color:var(--net-ink);width:22px;flex:0 0 22px;text-align:center}
+  .navitem.home .ni-num{color:var(--text)}
+  .ni-t{font-size:14px;font-weight:600;display:flex;flex-direction:column;line-height:1.25}
+  .ni-t small{font-weight:400;font-size:10.5px;color:var(--muted);font-family:var(--mono);margin-top:1px}
+
+  .banner{margin:18px 0 0;border:1px solid var(--line-2);border-left:3px solid var(--muted);border-radius:10px;background:var(--surface);padding:12px 16px;font-size:13.5px;color:var(--muted)}
+  .banner b{color:var(--text)}
+  .banner.ios-note{border-left-color:var(--ios)} .banner.web-note{border-left-color:var(--web)}
+
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0 4px;font-size:12.5px;color:var(--muted)}
+  .legend i{font-style:normal;display:inline-flex;align-items:center;gap:7px}
+  .dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .dot.d{background:var(--dev)} .dot.n{background:var(--net)}
+
+  .flow{position:relative;margin-top:12px;padding-left:4px}
+  .phase{margin:18px 0 12px 62px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:12px}
+  .phase::after{content:"";flex:1;height:1px;background:var(--line-2)}
+  .phase:first-child{margin-top:4px}
+  .step{position:relative;padding:0 0 12px 62px}
+  .rail{position:absolute;left:21px;top:6px;bottom:-6px;width:2px;background:var(--dev-line)}
+  .step:last-child .rail{display:none}
+  .num{position:absolute;left:0;top:0;width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:600;font-size:16px;border:1.5px solid var(--dev);color:var(--dev);background:var(--surface);z-index:2;transition:.2s}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;transition:.18s;position:relative}
+  .card:hover{border-color:var(--line-2)}
+  .head{display:flex;gap:12px;align-items:flex-start;padding:14px 16px}
+  .head.clk{cursor:pointer}
+  .head .txt{flex:1;font-size:14.5px}
+  .head .txt b{color:var(--text);font-weight:600}
+  .head .txt .t{color:var(--net-ink);font-weight:600;font-family:var(--mono);font-size:13px}
+  .tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;padding:4px 8px;border-radius:6px;white-space:nowrap;border:1px solid;margin-top:1px}
+  .tag.d{color:var(--dev);border-color:var(--dev-line);background:var(--dev-soft)}
+  .tag.n{color:var(--net-ink);border-color:var(--net-line);background:var(--net-soft)}
+  .chev{color:var(--muted);transition:.2s;font-size:11px;margin-top:3px}
+  .branch{font-family:var(--mono);font-size:10px;letter-spacing:.03em;margin:0 0 5px;color:var(--muted)}
+  .branch.ok{color:var(--ok)} .branch.fb{color:var(--fail)}
+  .dchip{display:inline-block;margin-top:8px;cursor:pointer;font-family:var(--mono);font-size:10px;letter-spacing:.03em;border:1px dashed var(--web);color:var(--web);background:#f2edf8;border-radius:6px;padding:3px 9px}
+  .dchip:hover{filter:brightness(.98)}
+
+  .step.net .num{border-color:var(--net);color:var(--net-ink);box-shadow:0 0 0 3px var(--net-soft)}
+  .step.net .rail,.step.net + .step .rail{background:var(--net-line)}
+  .step.net .card{border-color:var(--net-line)}
+  .step.net .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--net)}
+  .step.net .head{padding-left:18px}
+
+  .detail{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s ease;border-top:1px solid transparent}
+  .card.open .detail{grid-template-rows:1fr;border-top-color:var(--line)}
+  .card.open .chev{transform:rotate(180deg);color:var(--net-ink)}
+  .detail-in{overflow:hidden;min-height:0;padding:14px 16px;font-size:13px;color:var(--muted);background:var(--surface-2)}
+  .detail-in code{font-family:var(--mono);font-size:12px;color:var(--net-ink);background:var(--net-soft);padding:1px 6px;border-radius:5px}
+  .codeline{display:block;margin-top:10px;font-family:var(--mono);font-size:11.5px;color:var(--dev);border-left:2px solid var(--dev-line);padding-left:10px}
+
+  .flow.walking .step{opacity:.3;filter:saturate(.5);transition:opacity .3s,filter .3s}
+  .flow.walking .step.active{opacity:1;filter:none}
+  .step.active .num{transform:scale(1.1)} .step.active.net .num{box-shadow:0 0 0 5px var(--net-soft)}
+
+  .summary{margin-top:20px;border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;background:var(--surface);display:flex;gap:18px;align-items:center}
+  .summary .big{font-weight:700;font-size:46px;line-height:.85;min-width:66px;text-align:center;letter-spacing:-.03em}
+  .summary.zero .big{color:var(--dev)} .summary.one .big{color:var(--net)} .summary.split .big{color:var(--warn);font-size:34px}
+  .summary .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+  .summary p{margin:5px 0 0;font-size:13.5px;color:var(--muted)} .summary p b{color:var(--text)} .summary p code{font-family:var(--mono);font-size:12px;color:var(--net-ink)}
+
+  .ref{margin-top:40px;border-top:1px solid var(--line);padding-top:30px}
+  .ref h2{font-size:21px;font-weight:600;margin:0 0 6px;letter-spacing:-.01em}
+  .ref .lead{color:var(--muted);font-size:14px;margin:0 0 20px;max-width:80ch}
+  .ref .lead code{font-family:var(--mono);font-size:12.5px;color:var(--net-ink)}
+  .lifecycle{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px 18px}
+  .lc-node{font-family:var(--mono);font-size:12px;font-weight:600;padding:9px 13px;border-radius:8px;border:1px solid;letter-spacing:.02em}
+  .lc-node small{display:block;font-weight:400;font-size:10px;letter-spacing:0;opacity:.8;margin-top:2px}
+  .n-pending{color:var(--dev);border-color:var(--dev-line);background:var(--dev-soft)}
+  .n-prog{color:var(--net-ink);border-color:var(--net-line);background:var(--net-soft)}
+  .n-done{color:var(--ok);border-color:#bfe0cb;background:#eef7f1}
+  .n-fail{color:var(--fail);border-color:#e6c7bf;background:#faf0ed}
+  .lc-ar{font-family:var(--mono);font-size:10.5px;color:var(--muted);display:flex;flex-direction:column;align-items:center;line-height:1.3;min-width:40px}
+  .lc-ar b{font-size:15px;color:var(--text);font-weight:400}
+  .lc-ar.ok b{color:var(--ok)} .lc-ar.fail b{color:var(--fail)}
+  .lc-break{flex-basis:100%;height:0}
+  .triggers{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+  .trig{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+  .trig h5{margin:0 0 4px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--net-ink)}
+  .trig.bad h5{color:var(--fail)} .trig.warn h5{color:var(--warn)}
+  .trig p{margin:0;font-size:12.5px;color:var(--muted)} .trig p code{font-family:var(--mono);font-size:11.5px;color:var(--dev)}
+
+  /* deltas + approach shared */
+  .xview{margin-top:16px}
+  .dintro{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--net);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px}
+  .dintro h2{margin:0 0 6px;font-size:20px;font-weight:600;letter-spacing:-.01em}
+  .dintro p{margin:0;font-size:14px;color:var(--muted)} .dintro code{font-family:var(--mono);font-size:12.5px;color:var(--net-ink)}
+  .drow{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px}
+  .drow .dh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .drow .dh h3{margin:0;font-size:16px;font-weight:600}
+  .sev{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;padding:3px 8px;border-radius:5px;border:1px solid}
+  .sev.break{color:var(--fail);border-color:#e6c7bf;background:#faf0ed}
+  .sev.behav{color:var(--warn);border-color:#e6d4ba;background:#fbf5ea}
+  .sev.platform{color:var(--net-ink);border-color:var(--net-line);background:var(--net-soft)}
+  .sev.same{color:var(--ok);border-color:#bfe0cb;background:#eef7f1}
+  .sev.design{color:var(--muted);border-color:var(--line-2);background:var(--surface-2)}
+  .dcols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .dcol{border:1px solid var(--line);border-radius:9px;padding:11px 13px;background:var(--surface-2)}
+  .dcol .pl{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px;margin-bottom:6px}
+  .dcol .pl .pd{width:7px;height:7px;border-radius:50%}
+  .dcol.a .pl{color:var(--andro)} .dcol.a .pl .pd{background:var(--andro)}
+  .dcol.i .pl{color:var(--ios)} .dcol.i .pl .pd{background:var(--ios)}
+  .dcol.w .pl{color:var(--web)} .dcol.w .pl .pd{background:var(--web)}
+  .dcol p{margin:0;font-size:12.5px;color:var(--text)} .dcol code{font-family:var(--mono);font-size:11px;color:var(--net-ink);background:var(--net-soft);padding:1px 4px;border-radius:4px}
+  .dnote{margin:12px 0 0;font-size:13px;color:var(--muted);border-left:2px solid var(--net);padding-left:12px} .dnote b{color:var(--text)}
+  .hexbox{font-family:var(--mono);font-size:11px;color:#cfe3f5;background:#0f1620;border-radius:8px;padding:11px 13px;margin-top:10px;overflow-x:auto;white-space:pre;line-height:1.6}
+  .hexbox .c{color:#7fb2dd}
+  .renames{margin-top:6px}
+  .renames summary{cursor:pointer;font-family:var(--mono);font-size:12px;color:var(--muted);padding:10px 0}
+  .renames table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+  .renames td{padding:8px 10px;border-bottom:1px solid var(--line)} .renames td:first-child{color:var(--andro);font-family:var(--mono);font-size:12px}
+  .renames td.arr{color:var(--muted);text-align:center;width:30px} .renames td:last-child{color:var(--ios);font-family:var(--mono);font-size:12px}
+
+  /* approach */
+  .tldr{background:#0f1620;color:#dbe6f2;border-radius:var(--radius);padding:18px 20px;margin-bottom:18px}
+  .tldr h2{margin:0 0 8px;font-size:18px;color:#fff;font-weight:600}
+  .tldr p{margin:0;font-size:14px;color:#b9c6d6} .tldr b{color:#fff}
+  .reqcards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px}
+  .reqcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px 17px}
+  .reqcard h4{margin:0 0 6px;font-size:14px;font-weight:600}
+  .reqcard p{margin:0 0 10px;font-size:13px;color:var(--muted)}
+  .scorerow{display:flex;gap:7px;flex-wrap:wrap}
+  .score{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:7px;padding:5px 9px;display:flex;align-items:center;gap:6px}
+  .acard{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px}
+  .acard.spot{border-color:var(--ok);box-shadow:0 0 0 2px #eef7f1}
+  .acard .ah{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .acard .ah h3{margin:0;font-size:17px;font-weight:600}
+  .pcgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .pc{border:1px solid var(--line);border-radius:9px;padding:11px 13px}
+  .pc.pros{background:#eef7f1;border-color:#bfe0cb} .pc.cons{background:#faf0ed;border-color:#e6c7bf}
+  .pc h5{margin:0 0 7px;font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+  .pc.pros h5{color:var(--ok)} .pc.cons h5{color:var(--fail)}
+  .pc ul{margin:0;padding-left:16px} .pc li{font-size:12.5px;color:var(--text);margin-bottom:5px}
+  .bestwhen{margin:12px 0 0;font-size:13px;color:var(--muted);border-left:2px solid var(--ok);padding-left:12px} .bestwhen b{color:var(--text)}
+  .matrix{margin-top:6px;overflow:visible}
+  .matrix table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:560px}
+  .matrix th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:8px 8px;border-bottom:1px solid var(--line-2)}
+  .matrix th .pd{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}
+  .matrix td{padding:7px 8px;border-bottom:1px solid var(--line)}
+  .matrix td:first-child{color:var(--text)}
+  .matrix td.c{text-align:center;font-weight:600;font-family:var(--mono)}
+  .sym.ok{color:var(--ok)} .sym.warn{color:var(--warn)} .sym.bad{color:var(--fail)} .sym.glue{color:var(--net)}
+  .capref{font-family:var(--mono);font-size:10px;color:var(--muted)}
+  .rulebox{background:#fbf5ea;border:1px solid #e6d4ba;border-left:3px solid var(--warn);border-radius:var(--radius);padding:14px 16px;margin:4px 0 12px}
+  .rulebox .rl{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--warn);margin-bottom:6px}
+  .rulebox p{margin:0;font-size:13.5px;color:var(--text)} .rulebox p+p{margin-top:8px} .rulebox code{font-family:var(--mono);font-size:12px;color:var(--warn);background:#f3ead9;padding:1px 5px;border-radius:4px}
+  .fwcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px}
+  .fwcard.spot{border-color:var(--ok);box-shadow:0 0 0 2px #eef7f1}
+  .fwh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:2px}
+  .fwh h3{margin:0;font-size:16px;font-weight:600} .fwlang{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .fwbest{margin-left:auto;font-size:11.5px;color:var(--ok);font-style:italic}
+  .coldefs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:2px 0 12px}
+  .coldef{display:flex;flex-wrap:wrap;align-items:baseline;gap:7px;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:10px 13px;font-size:12.5px}
+  .coldef .pd{width:8px;height:8px;border-radius:50%;align-self:center}
+  .coldef b{color:var(--text);font-weight:600} .coldef .cdtxt{flex-basis:100%;color:var(--muted)}
+  .coldef .cdlink{cursor:pointer;color:var(--net-ink);font-family:var(--mono);font-size:10.5px;background:transparent;border:0;border-bottom:1px dotted var(--net-ink);padding:0}
+  .symkey{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:0 0 10px} .symkey>span{display:inline-flex;align-items:center;gap:6px}
+  .tip{position:relative;cursor:help;border-bottom:1px dotted currentColor}
+  .tip::after,.celltip::after{content:attr(data-tip);position:absolute;left:50%;bottom:150%;transform:translateX(-50%);background:#0f1620;color:#e8eef5;font-family:var(--ui);font-weight:400;font-size:12px;letter-spacing:0;text-transform:none;padding:9px 12px;border-radius:8px;width:240px;white-space:normal;line-height:1.45;text-align:left;opacity:0;pointer-events:none;transition:opacity .14s;z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+  @media (hover:hover){ .tip:hover::after,.celltip:hover::after{opacity:1} }
+  .tip,.celltip{-webkit-tap-highlight-color:rgba(31,111,178,.15)}
+  /* tap-to-show explanation (touch + universal) */
+  #tiptoast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(10px);display:flex;gap:12px;align-items:flex-start;max-width:min(460px,92vw);background:#0f1620;color:#e8eef5;font-size:13px;line-height:1.5;padding:13px 16px;border-radius:10px;box-shadow:0 12px 34px rgba(0,0,0,.32);z-index:200;opacity:0;pointer-events:none;transition:opacity .16s,transform .16s}
+  #tiptoast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  #tiptoast .tt-text{flex:1}
+  #tiptoast .tt-x{cursor:pointer;background:transparent;border:0;color:#9fb3c8;font-size:14px;line-height:1;padding:0;margin-top:1px}
+  .celltip{position:relative;cursor:help}
+  .tip.edge::after,.celltip.edge::after{left:auto;right:0;transform:none}
+  .guide{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-top:6px}
+  .guide h4{margin:0 0 10px;font-size:14px;font-weight:600}
+  .guide .q{font-weight:600;margin:0 0 6px} .guide ul{margin:0 0 12px;padding-left:18px} .guide li{font-size:13px;color:var(--muted);margin-bottom:5px} .guide li b{color:var(--text)}
+  .phasepath{counter-reset:ph;margin:6px 0 0;padding:0;list-style:none}
+  .phasepath li{position:relative;padding:0 0 14px 42px;font-size:13.5px;color:var(--muted)}
+  .phasepath li::before{counter-increment:ph;content:counter(ph);position:absolute;left:0;top:-2px;width:28px;height:28px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line-2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:600;color:var(--net-ink)}
+  .phasepath li b{color:var(--text)}
+  .stake{background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--net);border-radius:var(--radius);padding:16px 18px;font-size:13.5px;color:var(--text);margin-top:8px}
+  .sech{font-size:15px;font-weight:600;margin:26px 0 10px;letter-spacing:-.01em}
+
+  /* xplat explainer */
+  .audsel{display:inline-flex;background:var(--surface);border:1px solid var(--line-2);border-radius:10px;padding:3px;margin:4px 0 18px}
+  .aseg{cursor:pointer;font-weight:600;font-size:14px;border:0;background:transparent;color:var(--muted);padding:8px 18px;border-radius:8px;transition:.15s;font-family:var(--ui);display:flex;align-items:center;gap:7px}
+  .aseg small{font-weight:400;font-size:11px;opacity:.7}
+  .aseg[aria-selected="true"]{background:var(--surface-2);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .fan{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;margin:4px 0}
+  .fanbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px 17px}
+  .fanbox.src{border-color:var(--net);background:linear-gradient(180deg,#eef6fc,#fff)}
+  .fanbox h4{margin:0 0 4px;font-size:14px;font-weight:600} .fanbox p{margin:0;font-size:12.5px;color:var(--muted)}
+  .fanbox .badge{font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+  .fanright{display:flex;flex-direction:column;gap:10px}
+  .fanbox.an{border-left:3px solid var(--andro)} .fanbox.io{border-left:3px solid var(--ios)}
+  .fanarrow{font-size:24px;color:var(--net);text-align:center}
+  .costbars{display:flex;flex-direction:column;gap:9px;margin:6px 0}
+  .cbrow{display:flex;align-items:center;gap:12px}
+  .cblabel{font-size:12.5px;width:170px;flex:0 0 170px;color:var(--text)}
+  .cbtrack{flex:1;background:var(--surface-2);border-radius:7px;overflow:hidden;border:1px solid var(--line)}
+  .cbfill{padding:6px 10px;font-family:var(--mono);font-size:11px;color:#fff;white-space:nowrap}
+  .cbfill.hi{background:#9a5f57} .cbfill.mid{background:var(--net)} .cbfill.lo{background:var(--web)}
+  .splitbar{display:flex;height:36px;border-radius:8px;overflow:hidden;border:1px solid var(--line-2);margin:8px 0;font-family:var(--mono);font-size:11.5px}
+  .splitbar .seg{display:flex;align-items:center;justify-content:center;padding:0 8px;text-align:center;font-weight:500}
+  .splitbar .shared{background:#e8f1f9;color:var(--net-ink)} .splitbar .native{background:#fbf5ea;color:var(--warn)}
+  .xnote{font-size:12px;color:var(--muted);margin:4px 0 0}
+  .keylist{margin:6px 0 0;padding:0;list-style:none}
+  .keylist li{font-size:13px;color:var(--text);padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:baseline}
+  .keylist li:last-child{border-bottom:0}
+  .keylist .k{font-family:var(--mono);font-size:11px;flex:0 0 130px;color:var(--net-ink)}
+  .keylist .k.warn{color:var(--warn)}
+
+  footer{margin-top:38px;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.02em}
+  footer a{color:var(--net-ink)}
+
+  @media(max-width:760px){
+    .model{grid-template-columns:1fr}
+    .arrow{flex-direction:row;gap:10px;min-width:0;padding:4px 0} .arrow .big{transform:rotate(90deg)}
+    .triggers{grid-template-columns:1fr} .phase{margin-left:62px}
+    .dcols{grid-template-columns:1fr} .reqcards{grid-template-columns:1fr} .pcgrid{grid-template-columns:1fr}
+    .matrix{overflow-x:auto;-webkit-overflow-scrolling:touch} .coldefs{grid-template-columns:1fr}
+    .fan{grid-template-columns:1fr;gap:8px} .fanarrow{transform:rotate(90deg)}
+    .splitbar{height:auto;flex-wrap:wrap} .cblabel{flex:0 0 120px;width:120px}
+    .lifecycle{padding:16px 13px} .summary{flex-wrap:wrap;gap:12px}
+    .step{padding-left:54px} .num{width:38px;height:38px;font-size:14px} .rail{left:18px}
+  }
+
+  /* ===== document layout (restructure to a scrolling technical design) ===== */
+  .mast{border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,var(--bg))}
+  .mast-in{max-width:1180px;margin:0 auto;padding:40px 28px 26px}
+  .mast .eyebrow{color:var(--net-ink)}
+  .mast h1{font-size:clamp(34px,6vw,52px);margin:.12em 0 .14em}
+  .mast .sub{margin:0}
+  .mast-meta{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
+  .statusbadge{font-family:var(--mono);font-size:10.5px;letter-spacing:.03em;border:1px solid var(--line-2);border-radius:999px;padding:4px 11px;color:var(--muted);background:var(--surface)}
+  .statusbadge.built{color:var(--ok);border-color:#bfe0cb;background:#eef7f1}
+
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(245,246,247,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .tb-in{max-width:1180px;margin:0 auto;padding:9px 28px;display:flex;align-items:center;gap:16px}
+  .tb-title{font-weight:700;font-size:15px;letter-spacing:-.01em;white-space:nowrap}
+  .tb-title small{font-family:var(--mono);font-weight:400;font-size:11px;color:var(--muted);letter-spacing:.02em}
+  .topbar .platsel{margin-left:auto}
+  .topbar .pseg{padding:6px 13px;font-size:13px}
+
+  .docwrap{max-width:1180px;margin:0 auto;padding:0 28px 110px;display:grid;grid-template-columns:212px 1fr;gap:42px;align-items:start}
+  .toc{position:sticky;top:74px;align-self:start;padding-top:30px;max-height:calc(100vh - 90px);overflow:auto}
+  .toc-title{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;padding-left:11px}
+  .toc a{display:flex;gap:9px;align-items:baseline;text-decoration:none;color:var(--muted);padding:7px 11px;border-left:2px solid transparent;border-radius:0 7px 7px 0;transition:.13s;cursor:pointer;font-size:13px}
+  .toc a:hover{color:var(--text);background:var(--surface)}
+  .toc a b{font-family:var(--mono);font-size:11px;color:var(--net-ink);font-weight:600;flex:0 0 auto}
+  .toc a.active{color:var(--text);font-weight:600;border-left-color:var(--net);background:var(--surface)}
+  .toc a.active b{color:var(--net)}
+
+  .doc{min-width:0;padding-top:30px}
+  .docsec{padding:8px 0 34px;border-bottom:1px solid var(--line);scroll-margin-top:64px}
+  .docsec:last-child{border-bottom:0}
+  .sec-head{display:flex;align-items:center;gap:13px;margin:0 0 16px}
+  .sec-n{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--net-ink);width:30px;height:30px;flex:0 0 30px;border:1px solid var(--net-line);background:var(--net-soft);border-radius:8px;display:flex;align-items:center;justify-content:center}
+  .sech2{margin:0;font-size:clamp(22px,3.4vw,28px);font-weight:700;letter-spacing:-.02em;line-height:1.1}
+  .expandbtn{margin-left:auto;cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;background:var(--surface);border:1px solid var(--line-2);color:var(--text);border-radius:9px;padding:7px 13px;transition:.15s}
+  .expandbtn:hover{border-color:var(--net);color:var(--net-ink)}
+
+  .subsec{margin:30px 0 0;padding-top:6px}
+  .subsec:first-of-type{margin-top:8px}
+  .subhead{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;margin-bottom:6px}
+  .subhead .sn{font-family:var(--mono);font-size:12px;color:var(--net-ink);font-weight:600}
+  .subhead h3{margin:0;font-size:18px;font-weight:600;letter-spacing:-.01em}
+  .subhead .ss{font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+  .subhead .chip-here{margin-left:auto}
+  .sublead{color:var(--muted);font-size:13.5px;margin:2px 0 12px;max-width:82ch}
+  .sublead code{font-family:var(--mono);font-size:12.5px;color:var(--net-ink)}
+  .ov-lead{font-size:15.5px;color:var(--text);margin:0 0 4px;max-width:78ch}
+  .doc .model{margin-top:20px}
+  .doc .summary{margin-bottom:4px}
+  .doc .legend{margin:0 0 6px}
+
+  @media(max-width:920px){
+    .docwrap{grid-template-columns:1fr;gap:0}
+    /* keep the top bar to one stable-height line so the sticky strip below lines up */
+    .tb-in{gap:10px}
+    .tb-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .tb-title small{display:none}
+    .topbar .platsel{flex:0 0 auto}
+    .topbar .pseg{padding:6px 11px;font-size:12.5px}
+    .toc{position:sticky;top:47px;display:flex;align-items:center;gap:4px;overflow-x:auto;padding:8px 0;max-height:none;border-bottom:1px solid var(--line);background:var(--bg);z-index:20;-webkit-overflow-scrolling:touch}
+    .toc-toggle{padding:0 6px 0 0;flex:0 0 auto}
+    .toc-links{display:flex;gap:4px}
+    .toc-title{display:none}
+    .toc a{white-space:nowrap;border-left:0;border-bottom:2px solid transparent;border-radius:7px 7px 0 0;padding:7px 12px}
+    .toc a.active{border-left:0;border-bottom-color:var(--net)}
+    .doc{padding-top:16px}
+    .docsec{scroll-margin-top:108px}   /* clears both stacked sticky bars */
+    .mast-in,.tb-in,.docwrap{padding-left:18px;padding-right:18px}
+    .sec-head{flex-wrap:wrap;gap:9px}
+    .sec-head .expandbtn{font-size:10px;padding:6px 9px}
+  }
+
+  /* collapsible contents */
+  .toc-toggle{display:flex;align-items:center;gap:8px;background:transparent;border:0;cursor:pointer;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:0 0 10px 11px}
+  .toc-toggle:hover{color:var(--text)}
+  .toc-toggle .cv-closed{display:none;font-size:14px}
+  .toc.collapsed .toc-toggle{padding-bottom:0}
+  .toc.collapsed .toc-toggle .cv-open{display:none}
+  .toc.collapsed .toc-toggle .cv-closed{display:inline}
+  .toc.collapsed .toc-links{display:none}
+  @media(min-width:921px){ .docwrap.tocco{grid-template-columns:40px 1fr} }
+  /* glossary */
+  .glossary{margin:6px 0 0}
+  .gterm{display:grid;grid-template-columns:210px 1fr;gap:20px;padding:13px 2px;border-bottom:1px solid var(--line);align-items:baseline}
+  .gterm:last-child{border-bottom:0}
+  .gterm dt{margin:0;font-weight:600;font-size:14px;color:var(--text)}
+  .gterm dd{margin:0;font-size:13.5px;color:var(--muted)}
+  .gterm dd code{font-family:var(--mono);font-size:12px;color:var(--net-ink)}
+  @media(max-width:760px){ .gterm{grid-template-columns:1fr;gap:3px;padding:12px 2px} }
+</style>
+</head>
+<body>
+<div class="masthead"></div>
+
+<div class="mast">
+  <div class="mast-in">
+    <div class="eyebrow">Technical Design Proposal · Identity, Auth &amp; Offline Sync</div>
+    <h1>Scaff<span class="g">Guard</span></h1>
+    <p class="sub">A proposed approach for how a device-bound key becomes an identity, how login works with no network, and how captured events are signed, durably queued and synced.</p>
+    <div class="mast-meta">
+      <span class="statusbadge built">● Android — built</span>
+      <span class="statusbadge">○ iOS — proposed</span>
+      <span class="statusbadge">○ Web / PWA — proposed</span>
+    </div>
+  </div>
+</div>
+
+<div class="topbar" role="banner">
+  <div class="tb-in">
+    <span class="tb-title">ScaffGuard <small>· technical design</small></span>
+    <div class="platsel" id="platsel" role="tablist" aria-label="Platform — switches the Overview and Flows sections">
+      <button class="pseg" role="tab" data-p="android" aria-selected="true" onclick="setPlat('android')"><span class="pd"></span>Android</button>
+      <button class="pseg" role="tab" data-p="ios" aria-selected="false" onclick="setPlat('ios')"><span class="pd"></span>iOS</button>
+      <button class="pseg" role="tab" data-p="web" aria-selected="false" onclick="setPlat('web')"><span class="pd"></span>Web</button>
+    </div>
+  </div>
+</div>
+
+<div class="docwrap">
+  <nav class="toc" id="toc" aria-label="Contents"></nav>
+  <main class="doc">
+    <section class="docsec" id="s-overview">
+      <div class="sec-head"><span class="sec-n">1</span><h2 class="sech2">Overview</h2></div>
+      <div id="overview-content"></div>
+    </section>
+    <section class="docsec" id="s-flows">
+      <div class="sec-head"><span class="sec-n">2</span><h2 class="sech2">The flows</h2><button class="expandbtn" id="expandBtn" onclick="toggleAllFlows()">＋ Expand all detail</button></div>
+      <div id="flows-content"></div>
+    </section>
+    <section class="docsec" id="s-deltas">
+      <div class="sec-head"><span class="sec-n">3</span><h2 class="sech2">Platform deltas</h2></div>
+      <div id="deltas-content"></div>
+    </section>
+    <section class="docsec" id="s-approach">
+      <div class="sec-head"><span class="sec-n">4</span><h2 class="sech2">Delivery approach</h2></div>
+      <div id="approach-content"></div>
+    </section>
+    <section class="docsec" id="s-frameworks">
+      <div class="sec-head"><span class="sec-n">5</span><h2 class="sech2">Cross-platform frameworks</h2></div>
+      <div id="frameworks-content"></div>
+    </section>
+    <section class="docsec" id="s-glossary">
+      <div class="sec-head"><span class="sec-n">6</span><h2 class="sech2">Glossary</h2></div>
+      <div id="glossary-content"></div>
+    </section>
+  </main>
+</div>
+
+<div id="tiptoast"><span class="tt-text"></span><button class="tt-x" onclick="hideTip()" aria-label="Dismiss">✕</button></div>
+<script>
+/* ---------- platform metadata ---------- */
+const PLAT = {
+  android:{
+    privClass:"priv", privChip:"private key · stays in Keystore", pubChip:"public key · spki DER (base64)",
+    privText:"A tamper-resistant chip mints an ECDSA P-256 key pair. The private half is generated inside the Keystore and is non-exportable — the app can only ask the chip to <em>sign</em>.",
+    devLabel:"Android",
+    stack:"<b>Stack:</b> Android Keystore · BiometricPrompt · Room + SQLCipher · WorkManager · ConnectivityManager",
+    worker:"SyncWorker",
+    triggers:[
+      {h:"On capture",p:"<code>requestSync()</code> enqueues a one-off worker constrained to <code>NetworkType.CONNECTED</code>, with exponential backoff."},
+      {h:"On reconnect",p:"<code>NetworkMonitor.onAvailable</code> calls <code>requestSync()</code> — the queue drains the instant Wi-Fi / data returns."},
+      {h:"Periodic backstop",p:"A 15-minute periodic <code>SyncWorker</code> scheduled at app start — guaranteed by WorkManager."}
+    ]
+  },
+  ios:{
+    privClass:"priv", privChip:"private key · stays in Secure Enclave", pubChip:"public key · X9.63 → wrapped to spki",
+    privText:"The Secure Enclave mints an ECDSA P-256 key pair (the only curve it supports). The private half never leaves the chip — the app can only ask it to <em>sign</em>.",
+    devLabel:"iOS",
+    stack:"<b>Stack:</b> Secure Enclave (P-256) · LocalAuthentication (Face ID / Touch ID) · GRDB + SQLCipher · BGTaskScheduler + background URLSession · NWPathMonitor",
+    worker:"SyncEngine",
+    triggers:[
+      {h:"Foreground + reachable",p:"<code>NWPathMonitor</code> <code>.satisfied</code> → <code>SyncEngine.flush()</code> while the app is open."},
+      {h:"Background URLSession",p:"Upload tasks survive suspension and relaunch the app on completion; iOS picks the time."},
+      {h:"BGTask backstop",p:"<code>BGTaskScheduler</code> processing task — best-effort, <b>no guaranteed interval</b> (unlike WorkManager)."}
+    ]
+  },
+  web:{
+    privClass:"priv soft", privChip:"private key · non-exportable from JS · not hardware", pubChip:"public key · spki DER (base64)",
+    privText:"The browser generates an ECDSA P-256 key pair and marks the private key <b>non-exportable</b> — JavaScript can ask it to sign but never read the bytes. It's protected by the browser sandbox + disk encryption, <em>not</em> a hardware secure element, and it's erased if the user clears site data.",
+    devLabel:"Web (browser)",
+    stack:"<b>Stack:</b> Web Crypto (ECDSA P-256, software) · WebAuthn passkey + PIN · IndexedDB (+ PIN-derived AES-GCM) · Service Worker + Background Sync (Chromium) · online / offline events",
+    worker:"syncEngine (SW)",
+    triggers:[
+      {h:"Background Sync · Chromium",p:"On capture, <code>registration.sync.register('flush-queue')</code>; the SW flushes on reconnect <b>even if the page is closed</b> (+ Periodic Background Sync when installed)."},
+      {h:"Foreground fallback · all browsers",cls:"warn",p:"Flush on <code>online</code> / <code>visibilitychange</code> / <code>navigator.onLine</code> — <b>requires the app to be open</b>."},
+      {h:"iOS Safari",cls:"bad",p:"<b>No background sync at all</b> — the queue drains only while the PWA is open (foreground-only)."}
+    ]
+  }
+};
+
+/* ---------- flows ---------- */
+const FLOWS = {
+android:{
+  registration:{ banner:"", summaryClass:"one", summaryNum:"1",
+    summaryHtml:"<b>Exactly one server call</b> — step 7 (<code>POST /register</code>). It is the only step that needs connectivity; everything from install onward is on-device.",
+    steps:[
+      {n:1,type:"d",txt:"The user <b>installs and opens ScaffGuard</b> for the first time."},
+      {n:2,type:"d",txt:"The app checks local state — <b>no token and no Keystore key</b> — so it routes to registration, decided purely on-device.",
+        detail:"<code>start = if (authRepository.isRegistered) LOGIN else REGISTER</code>, where <code>isRegistered = prefs.isRegistered &amp;&amp; keystore.hasKey()</code>.",code:"MainActivity · AuthRepository.isRegistered"},
+      {n:3,type:"d",txt:"The user enters <b>name, email and phone</b> and taps “Send OTP”. Validated locally; nothing sent yet.",code:"RegistrationViewModel.submitForm()"},
+      {n:4,type:"d",txt:"On the OTP screen the user enters the code and chooses a fallback <b>PIN</b>. POC code is fixed at <span class='t'>123456</span>.",code:"RegistrationViewModel.verifyOtp()"},
+      {n:5,type:"d",txt:"The device <b>mints its identity</b>: a P-256 key pair in the secure chip — a private key that never leaves it, a public key that may be shared.",
+        detail:"<code>KeyPairGenerator(\"EC\",\"AndroidKeyStore\")</code>, alias <code>scaffguard_device_key</code>, <code>secp256r1</code>, <code>setDigests(SHA256)</code>. Non-exportable by construction.",code:"KeystoreManager.generateKeyPair()"},
+      {n:6,type:"d",delta:true,txt:"The app <b>exports the public key</b> — already in spki form, no wrapping needed.",
+        detail:"<code>getCertificate(alias).publicKey.encoded</code> is X.509 SubjectPublicKeyInfo DER → base64. iOS must wrap a raw point; web also exports spki for free.",code:"KeystoreManager.getPublicKeyBase64()"},
+      {n:7,type:"n",tagTxt:"→ Network · request/response",txt:"The app sends its registration package — <b>the one online step.</b> The server stores the public key and returns a token.",
+        detail:"<code>POST /register { userId, publicKey, deviceId, name, email, phone }</code>; <code>deviceId = ANDROID_ID</code>. Reply <code>200 { token, userId }</code>.",code:"AuthRepository.register() · server.js"},
+      {n:8,type:"d",delta:true,txt:"The app <b>stores token, user id, name and PIN</b> in an encrypted, hardware-backed area, then opens Home. <b>Registration complete.</b>",
+        detail:"<code>EncryptedSharedPreferences</code>, master key in the Keystore; also seeds the SQLCipher DB passphrase.",code:"SecurePrefs"}
+    ]},
+  rereg:{ banner:"<b>Proposed flow (TECHNICAL_DESIGN §12.3–12.7) — not yet in the POC.</b> Today re-registration only happens via reinstall, which mints a new UUID and registers as a <em>separate, unrelated</em> account. Below is the designed target: rebind a fresh key to the existing account after re-proving identity.",
+    summaryClass:"one", summaryNum:"1",
+    summaryHtml:"<b>One server call</b> — step 4 (<code>POST /register</code>, re-reg). The account is keyed by <b>email</b>, so a recognised email returns the <b>existing</b> <code>userId</code>; the new key is added as <em>active</em> and the old one scheduled for grace/revoke.",
+    steps:[
+      {n:1,type:"d",txt:"The user <b>triggers re-registration</b> (reset, reinstall, or new device) and enters their <b>email</b> + name / phone.",
+        detail:"Needs a new entry point. Unused helpers exist: <code>KeystoreManager.deleteKey()</code>, <code>SecurePrefs.clear()</code>.",code:"AuthRepository (new reset entry point)"},
+      {n:2,type:"d",txt:"The app requests an OTP and the user <b>re-proves identity</b> (<span class='t'>123456</span>) and chooses a PIN.",code:"RegistrationViewModel.verifyOtp()"},
+      {n:3,type:"d",txt:"The app <b>deletes the old device key and generates a fresh P-256 pair</b> — old public key retired.",
+        detail:"Order matters: <code>generateKeyPair()</code> early-returns if <code>hasKey()</code>, so rotation needs an explicit <code>deleteKey()</code> first.",code:"KeystoreManager.deleteKey() → generateKeyPair()"},
+      {n:4,type:"n",tagTxt:"→ Network · request/response",txt:"The app posts the <b>new public key</b>. The server <b>recognises the email</b>, returns the <b>existing</b> user id, marks the new key active, schedules the old key for grace.",
+        detail:"Proposed server change: key the store by email, hold a list of device keys per account. Reply <code>200 { token(new), userId(EXISTING) }</code>.",code:"server.js (proposed: email-keyed)"},
+      {n:5,type:"d",txt:"The app <b>stores the returned (existing) user id</b>, the new token, and the PIN.",code:"SecurePrefs"},
+      {n:6,type:"d",txt:"<b>Done — account continuous, key rotated.</b> New events are signed with the new key.",
+        detail:"Edge case: items queued under the OLD key. Mitigations — flush before rotating, or keep the old key active during a grace window and verify <code>/sync</code> against any active key.",code:"§12.6 edge cases"}
+    ]},
+  login:{ banner:"", summaryClass:"zero", summaryNum:"0",
+    summaryHtml:"<b>Zero server calls.</b> The launch decision, the biometric/PIN gate and the session are all local. The token is only used later during sync, never needed to log in.",
+    steps:[
+      {n:1,type:"d",txt:"The user <b>opens a registered phone</b> — could be days later, on a site with no signal."},
+      {n:2,type:"d",txt:"The app sees this device is <b>already registered</b> (token + key in the chip) and goes straight to login — a 100% local decision.",
+        detail:"<code>isRegistered = prefs.isRegistered &amp;&amp; keystore.hasKey()</code>.",code:"MainActivity · AuthRepository.isRegistered"},
+      {n:3,type:"d",delta:true,txt:"The login screen <b>auto-triggers the biometric prompt</b>, first checking the device can do biometrics.",
+        detail:"<code>LaunchedEffect(Unit)</code>; <code>canAuthenticate(BIOMETRIC_WEAK)</code> gates it. None enrolled → PIN path.",code:"BiometricAuthenticator · LoginScreen"},
+      {n:4,type:"d",txt:"The <b>OS</b> draws the secure fingerprint dialog. The app only receives yes/no — never fingerprint data.",
+        detail:"<code>BiometricPrompt</code>, negative button “Use PIN”, <code>BIOMETRIC_WEAK</code> — keeps the in-app PIN fallback under the app's control, fully offline.",code:"BiometricAuthenticator.authenticate()"},
+      {n:5,type:"d",branch:"ok",branchTxt:"✓ success path",txt:"<b>Fingerprint matches → straight in.</b>",code:"LoginViewModel.onBiometricSuccess()"},
+      {n:6,type:"d",branch:"fb",branchTxt:"↳ fallback path",txt:"<b>No biometrics, cancel, or failure → the app asks for the backup PIN.</b>",
+        detail:"<code>ERROR_NEGATIVE_BUTTON</code>, <code>ERROR_USER_CANCELED</code>, <code>ERROR_NO_BIOMETRICS</code>, <code>ERROR_HW_UNAVAILABLE</code> → <code>FallbackToPin</code>.",code:"BiometricAuthenticator.AuthResult.FallbackToPin"},
+      {n:7,type:"d",branch:"fb",branchTxt:"↳ fallback path",txt:"The user types the <b>PIN</b>; the app checks it against the one saved at registration.",
+        detail:"<code>prefs.pin == pin</code>. POC: plaintext compare, no salt/KDF/rate-limit.",code:"AuthRepository.verifyPin()"},
+      {n:8,type:"d",txt:"On success (fingerprint <em>or</em> PIN) the user reaches Home. <b>No server contacted anywhere in this flow.</b>"}
+    ]},
+  offline:{ banner:"", summaryClass:"zero", summaryNum:"0",
+    summaryHtml:"<b>Capturing data costs zero network calls.</b> Delivery is deferred: one <code>POST /sync</code> per queued item, sent automatically once connectivity returns. Failures retry — nothing is lost.",
+    steps:[
+      {phase:"While offline — capture, sign, queue"},
+      {n:1,type:"d",txt:"The user types a title + description and taps <b>“Capture (signs &amp; queues)”</b>.",code:"HomeViewModel → EventRepository.captureEvent()"},
+      {n:2,type:"d",delta:true,txt:"The event is <b>written to the encrypted local database</b> (<code>synced=false</code>) — safe on the phone, network or not.",
+        detail:"Room over <b>SQLCipher</b>; 256-bit passphrase in <code>EncryptedSharedPreferences</code>. Table <code>site_events</code>.",code:"AppDatabase · SiteEvent"},
+      {n:3,type:"d",txt:"The app <b>freezes the event into one exact JSON string</b> — the bytes that will be stamped.",
+        detail:"<code>EventPayload(...)</code> via Moshi; field order fixed by declaration, so the JSON is deterministic.",code:"EventPayload (Moshi)"},
+      {n:4,type:"d",tagTxt:"🔒 On-device · hardware vault",delta:true,txt:"The <b>secure chip stamps those exact bytes</b> → a base64 DER ECDSA signature.",
+        detail:"<code>keystore.sign(bytes)</code> → <code>SHA256withECDSA</code>. Signature format matches iOS exactly; web emits raw P1363 and must convert.",code:"KeystoreManager.sign()"},
+      {n:5,type:"d",txt:"An <b>immutable signed envelope is enqueued</b>: payload <em>and</em> signature stored together.",
+        detail:"<code>SyncQueueItem{ payload, signature, status=PENDING, attempts=0 }</code> in <code>sync_queue</code>.",code:"SyncQueueItem"},
+      {n:6,type:"d",txt:"The app <b>nudges the sync engine</b>. With no signal it simply waits — the work is durable.",
+        detail:"<code>SyncScheduler.requestSync()</code> enqueues a <code>SyncWorker</code> constrained to <code>NetworkType.CONNECTED</code>.",code:"SyncScheduler.requestSync()"},
+      {n:7,type:"d",txt:"The <b>queue badge and statuses update instantly</b> from live DB streams.",code:"HomeViewModel (Room Flows)"},
+      {phase:"When connectivity returns — drain &amp; verify"},
+      {n:8,type:"d",delta:true,txt:"A <b>trigger fires</b>: reconnect, the capture nudge, or the 15-minute periodic backstop. The worker only runs once <b>CONNECTED</b> is satisfied — guaranteed deferred execution.",
+        detail:"<code>NetworkMonitor.onAvailable</code> → <code>requestSync()</code>; periodic <code>SyncWorker</code> in <code>ScaffGuardApp.onCreate()</code>.",code:"NetworkMonitor · SyncScheduler"},
+      {n:9,type:"n",tagTxt:"→ Network · per item",txt:"The worker <b>drains the outbox oldest-first</b>; for each item it posts the <b>stored payload + signature verbatim</b>.",
+        detail:"<code>pendingOldestFirst()</code> = PENDING or FAILED, <code>createdAt ASC</code>.",code:"SyncWorker → SyncRepository.flush()"},
+      {n:10,type:"n",tagTxt:"← Network · verify",txt:"The <b>server re-checks the stamp</b> against the registered public key. 2xx → DONE (and <code>synced=true</code>); failure → FAILED, retried.",
+        detail:"<code>crypto.verify('sha256', payload, pub, sig)</code>.",code:"server.js POST /sync"}
+    ]}
+},
+ios:{
+  registration:{ banner:"", summaryClass:"one", summaryNum:"1",
+    summaryHtml:"<b>Exactly one server call</b> — step 7 (<code>POST /register</code>). Same shape as Android; the only added work is wrapping the public key to spki (step 6) so the unchanged Node server accepts it.",
+    steps:[
+      {n:1,type:"d",txt:"The user <b>installs and opens ScaffGuard</b> for the first time."},
+      {n:2,type:"d",txt:"The app checks local state — <b>no token, no Enclave key</b> — and routes to registration, purely on-device.",
+        detail:"<code>start = isRegistered ? login : register</code>; <code>isRegistered = (token+userId in Keychain) AND hasKey()</code>.",code:"ScaffGuardApp · AuthRepository"},
+      {n:3,type:"d",txt:"The user enters <b>name, email and phone</b> and taps “Send OTP”. Validated locally.",code:"RegistrationViewModel"},
+      {n:4,type:"d",txt:"On the OTP screen the user enters the POC code <span class='t'>123456</span> and chooses a fallback <b>PIN</b>."},
+      {n:5,type:"d",txt:"The device <b>mints its identity</b>: a P-256 key pair in the <b>Secure Enclave</b> (the only curve it supports).",
+        detail:"<code>SecKeyCreateRandomKey</code> with <code>kSecAttrTokenIDSecureEnclave</code>, access control <code>.privateKeyUsage</code> <em>without</em> <code>.biometryCurrentSet</code> — so background signing works (mirrors Android).",code:"SecureEnclaveManager.generateKey()"},
+      {n:6,type:"d",delta:true,txt:"The app <b>exports the public key and wraps it to spki</b> — the one real iOS-specific step.",
+        detail:"<code>SecKeyCopyExternalRepresentation</code> returns a raw X9.63 point (<code>0x04‖X‖Y</code>, 65 B). Prepend the fixed 26-byte P-256 spki header → 91 B → base64, producing the same spki DER Android sends.",code:"SecureEnclaveManager (spki wrap, §C)"},
+      {n:7,type:"n",tagTxt:"→ Network · request/response",txt:"The app sends its registration package — <b>the one online step.</b> The server stores the public key and returns a token.",
+        detail:"<code>POST /register</code>; <code>deviceId = identifierForVendor</code>. Reply <code>200 { token, userId }</code>. Same unchanged <code>server.js</code>.",code:"AuthRepository.register() · server.js (shared)"},
+      {n:8,type:"d",delta:true,txt:"The app <b>stores token, user id, name and PIN</b> in the <b>Keychain</b> (<code>…ThisDeviceOnly</code>), then opens Home.",
+        detail:"<code>kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly</code>; also holds the SQLCipher passphrase. <code>…ThisDeviceOnly</code> = no iCloud sync / no restore to another device.",code:"KeychainStore"}
+    ]},
+  rereg:{ banner:"<b>Proposed flow (iOS §12) — design spec, not built.</b> Same design as Android. <span style='color:var(--ios)'><b>iOS twist:</b></span> Keychain items are <code>…ThisDeviceOnly</code>, so a key never restores to a new iPhone — restore-to-new-device is <em>always</em> a new-device re-registration, handled by email continuity.",
+    summaryClass:"one", summaryNum:"1",
+    summaryHtml:"<b>One server call</b> — step 4 (<code>POST /register</code>, re-reg). Recognised email returns the <b>existing</b> <code>userId</code>; new key active, old key → grace.",
+    steps:[
+      {n:1,type:"d",delta:true,txt:"The user <b>triggers re-registration</b> (reset, reinstall/offload, or new device) and enters their <b>email</b> + name / phone.",
+        detail:"A new iPhone restored from backup never carries the Enclave key (Keychain <code>…ThisDeviceOnly</code>), so this path is hit on every migration.",code:"AuthRepository (reset entry point)"},
+      {n:2,type:"d",txt:"The app requests an OTP and the user <b>re-proves identity</b> (<span class='t'>123456</span>) and chooses a PIN.",code:"RegistrationViewModel"},
+      {n:3,type:"d",txt:"The app <b>deletes the old Enclave key and generates a fresh P-256 key</b> (rotation).",
+        detail:"<code>SecItemDelete</code> by <code>kSecAttrApplicationTag</code>, then <code>SecKeyCreateRandomKey</code>.",code:"SecureEnclaveManager.deleteKey() → generateKey()"},
+      {n:4,type:"n",tagTxt:"→ Network · request/response",delta:true,txt:"The app posts the <b>new (spki-wrapped) public key</b>. The server <b>recognises the email</b>, returns the <b>existing</b> user id, marks the new key active.",
+        detail:"Same proposed email-keyed server. Public key still needs the spki wrap (§C). Reply <code>200 { token(new), userId(EXISTING) }</code>.",code:"server.js (shared, proposed)"},
+      {n:5,type:"d",txt:"The app <b>stores the returned (existing) user id</b>, the new token, and the PIN in the Keychain.",code:"KeychainStore"},
+      {n:6,type:"d",txt:"<b>Done — account continuous, key rotated.</b> New events are signed with the new key.",
+        detail:"Same edge case as Android: items queued under the old key → flush-before-rotate, or grace-window verification.",code:"iOS §12 edge cases"}
+    ]},
+  login:{ banner:"", summaryClass:"zero", summaryNum:"0",
+    summaryHtml:"<b>Zero server calls.</b> The launch decision, the Face ID / Touch ID gate and the session are all local. The token is only used later during sync.",
+    steps:[
+      {n:1,type:"d",txt:"The user <b>opens a registered iPhone</b> — could be days later, on a site with no signal."},
+      {n:2,type:"d",txt:"The app sees it's <b>already registered</b> (token + Enclave key) and shows login — a 100% local decision.",
+        detail:"<code>isRegistered = (token+userId in Keychain) AND SecureEnclaveManager.hasKey()</code>.",code:"AuthRepository · KeychainStore"},
+      {n:3,type:"d",delta:true,txt:"The login screen <b>auto-triggers Face ID / Touch ID</b>, first checking the device can do biometrics.",
+        detail:"<code>.task{}</code>; <code>LAContext().canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics)</code>. None enrolled → PIN path.",code:"BiometricAuthenticator (LocalAuthentication)"},
+      {n:4,type:"d",delta:true,txt:"The <b>OS</b> draws the Face ID / Touch ID UI. The app only receives success/failure.",
+        detail:"<code>ctx.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, ...)</code>. <b>iOS option:</b> <code>.deviceOwnerAuthentication</code> would auto-fall back to the device passcode — making the app PIN optional.",code:"BiometricAuthenticator.authenticate()"},
+      {n:5,type:"d",branch:"ok",branchTxt:"✓ success path",txt:"<b>Face ID / Touch ID matches → straight in.</b>"},
+      {n:6,type:"d",branch:"fb",branchTxt:"↳ fallback path",txt:"<b>No biometrics, cancel, or failure → the app asks for the backup PIN.</b>",
+        detail:"<code>.userCancel</code>, <code>.userFallback</code>, <code>.biometryNotAvailable</code>, <code>.biometryNotEnrolled</code>, <code>.biometryLockout</code> → show PIN.",code:"LoginViewModel"},
+      {n:7,type:"d",branch:"fb",branchTxt:"↳ fallback path",txt:"The user types the <b>PIN</b>; the app checks it against the one in the Keychain.",
+        detail:"POC: plaintext compare. Prod: salted slow hash + throttling, or device passcode via <code>.deviceOwnerAuthentication</code>.",code:"AuthRepository.verifyPin()"},
+      {n:8,type:"d",txt:"On success (Face ID / Touch ID <em>or</em> PIN) the user reaches Home. <b>No server contacted anywhere in this flow.</b>"}
+    ]},
+  offline:{ banner:"", summaryClass:"zero", summaryNum:"0",
+    summaryHtml:"<b>Capturing data costs zero network calls.</b> Delivery is deferred and <b>OS-controlled</b> on iOS — one <code>POST /sync</code> per queued item on a best-effort schedule. The queue/retry logic is identical to Android; only scheduling reliability differs.",
+    steps:[
+      {phase:"While offline — capture, sign, queue"},
+      {n:1,type:"d",txt:"The user types a title + description and taps <b>Capture</b>.",code:"EventRepository.captureEvent()"},
+      {n:2,type:"d",delta:true,txt:"The event is <b>written to the encrypted local database</b> (<code>synced=false</code>).",
+        detail:"<b>SQLCipher via GRDB</b>: <code>config.prepareDatabase { db in try db.usePassphrase(passphrase) }</code>; passphrase from the Keychain. Alt: Core Data + Data Protection.",code:"GRDB DatabaseQueue · SiteEvent"},
+      {n:3,type:"d",delta:true,txt:"The app <b>freezes the event into one exact JSON string</b>.",
+        detail:"Swift <code>Codable</code> doesn't guarantee key order → use <code>JSONEncoder.sortedKeys</code> or a canonical encoder. Sign the exact bytes you store &amp; send.",code:"EventPayload (Codable, sortedKeys)"},
+      {n:4,type:"d",tagTxt:"🔒 On-device · hardware vault",delta:true,txt:"The <b>Secure Enclave stamps those exact bytes</b> → a base64 DER ECDSA signature.",
+        detail:"<code>SecKeyCreateSignature(.ecdsaSignatureMessageX962SHA256)</code> — DER (X9.62) over SHA-256, identical in shape to Android. Interchangeable on the wire.",code:"SecureEnclaveManager.sign()"},
+      {n:5,type:"d",txt:"An <b>immutable signed envelope is enqueued</b> (<code>SyncQueueItem</code>, PENDING).",code:"SyncQueueItem"},
+      {n:6,type:"d",txt:"The app <b>nudges the sync engine</b> — schedule a background task / kick a foreground flush.",code:"SyncEngine / BackgroundSync"},
+      {n:7,type:"d",txt:"The <b>queue badge and statuses update instantly</b> from DB observation.",detail:"GRDB <code>ValueObservation</code> → SwiftUI.",code:"GRDB ValueObservation"},
+      {phase:"When connectivity returns — drain &amp; verify (OS-controlled)"},
+      {n:8,type:"d",delta:true,txt:"A <b>trigger fires</b> — but iOS scheduling is <b>best-effort</b>: a foreground flush on <code>NWPathMonitor</code>, background <code>URLSession</code> uploads (survive suspension, relaunch the app on completion), or a <code>BGTaskScheduler</code> backstop with <b>no guaranteed interval</b>.",
+        detail:"Biggest behavioural delta vs Android's guaranteed WorkManager. Queue logic unchanged; timing is the OS's call.",code:"NWPathMonitor · BackgroundSync"},
+      {n:9,type:"n",tagTxt:"→ Network · per item",txt:"The engine <b>drains the outbox oldest-first</b>; per item it posts the <b>stored payload + signature verbatim</b>.",code:"SyncEngine.flush()"},
+      {n:10,type:"n",tagTxt:"← Network · verify",txt:"The <b>server re-checks the stamp</b> (unchanged <code>server.js</code>). 2xx → DONE; failure → FAILED, retried; reschedule a BGTask if anything remains.",
+        detail:"Works because the public key was spki-wrapped (§C) and the signature is already DER.",code:"server.js POST /sync (shared)"}
+    ]}
+},
+web:{
+  registration:{ banner:"<span style='color:var(--web)'><b>PWA design spec.</b></span> Runs in any modern browser; optionally installs to the home screen. The signing key is a software-protected Web Crypto key (not a hardware secure element) — design around that and around storage eviction.",
+    summaryClass:"one", summaryNum:"1",
+    summaryHtml:"<b>One <code>POST /register</code> call</b> (step 6). If you also enable WebAuthn biometric login, passkey enrolment adds one more round trip. Public key exports as spki for free; the signature delta only bites at capture/sync.",
+    steps:[
+      {n:1,type:"d",txt:"The user <b>opens the URL</b> — no install required — and optionally taps <b>“Add to Home Screen”</b> to install the PWA.",
+        detail:"A Web App Manifest + Service Worker make it installable and let the cached app shell run with no network.",code:"manifest.webmanifest · src/sw.js"},
+      {n:2,type:"d",txt:"The app checks local state in <b>IndexedDB</b> — no token, no device key — and routes to registration.",
+        detail:"Purely local read; no hardware check exists on the web. <code>isRegistered = (token+userId in IndexedDB) AND deviceKey present</code>.",code:"src/data/idb.js"},
+      {n:3,type:"d",txt:"The user enters <b>name, email and phone</b> and taps “Send OTP”. Validated in-page; no network.",code:"src/ui/registration"},
+      {n:4,type:"d",delta:true,txt:"On the OTP screen the user enters <span class='t'>123456</span> and chooses a <b>PIN / passphrase</b>.",
+        detail:"The PIN is special on web: it isn't stored — it <em>derives</em> the AES key that encrypts local data (§5.1). On native the PIN is stored in a hardware-sealed store; the web has none.",code:"src/auth/pin.js"},
+      {n:5,type:"d",delta:true,txt:"The app <b>generates a non-exportable Web Crypto signing key</b>; optionally it also registers a <b>WebAuthn passkey</b> for biometric login.",
+        detail:"<code>crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'}, false, ['sign','verify'])</code>, stored in IndexedDB. <b>Web reality — two keys:</b> a WebAuthn passkey (hardware-backed, login only) and a Web Crypto key (software, signs event payloads). You can't sign payloads with the passkey.",code:"src/crypto/deviceKey.js · src/auth/webauthn.js"},
+      {n:6,type:"n",tagTxt:"→ Network · request/response",txt:"The app sends its registration package. The public key <b>exports as spki directly</b> — no wrapping needed (better than iOS).",
+        detail:"<code>POST /register { userId, publicKey, deviceId, name, email, phone }</code> (+ passkey credential if used). <code>publicKey = crypto.subtle.exportKey('spki', pub)</code>; <code>deviceId</code> = a generated UUID in IndexedDB (no hardware id; resets on data clear).",code:"src/data/eventRepo.js · server.js (shared)"},
+      {n:7,type:"d",delta:true,txt:"The app <b>stores token + userId in IndexedDB</b> and derives the local-data encryption key from the PIN.",
+        detail:"PIN-derived AES-GCM via PBKDF2 / Argon2 — the key isn't stored, it's reconstructed at unlock. Token may instead live in an <code>httpOnly</code> cookie (safer vs XSS).",code:"src/data/cryptoStore.js"},
+      {n:8,type:"d",txt:"<b>Done → Home.</b> Offline-capable thereafter, subject to the web sync limits (see the offline tab).",
+        detail:"Call <code>navigator.storage.persist()</code> to reduce the chance the browser evicts the data — eviction wipes keys and forces re-registration.",code:"navigator.storage.persist()"}
+    ]},
+  rereg:{ banner:"<span style='color:var(--web)'><b>PWA design spec.</b></span> Same design as native, but <b>re-registration is comparatively common on the web</b> — clearing site data, switching browser/device, or storage eviction all wipe the key. Make it cheap and unsurprising, and warn users with unsynced items before they clear data.",
+    summaryClass:"one", summaryNum:"1",
+    summaryHtml:"<b>One <code>POST /register</code> call</b>. Recognised email returns the <b>existing</b> <code>userId</code>; the new key is marked active and the old key grace-windowed so already-queued items still verify.",
+    steps:[
+      {n:1,type:"d",delta:true,txt:"Re-registration is <b>triggered</b> by clearing site data, switching browser/device, or the PWA being evicted — all wipe the key.",
+        detail:"More frequent than native because browser storage is more volatile (eviction / ITP, especially on iOS).",code:"src/data/idb.js"},
+      {n:2,type:"d",txt:"The user <b>re-proves identity</b> (OTP <span class='t'>123456</span>, or WebAuthn) and chooses a PIN / passphrase.",code:"src/auth/*"},
+      {n:3,type:"d",txt:"The app <b>generates a fresh non-exportable Web Crypto key</b> (the old one is gone with the cleared data).",code:"src/crypto/deviceKey.js"},
+      {n:4,type:"n",tagTxt:"→ Network · request/response",txt:"The app posts the <b>new public key</b>. The server <b>recognises the email</b>, returns the <b>existing</b> user id, marks the new key active, grace-windows the old key.",
+        detail:"Same shared, proposed email-keyed server. Verify <code>/sync</code> against any active key so already-queued items still validate.",code:"server.js (shared, proposed)"},
+      {n:5,type:"d",txt:"The app <b>stores the existing user id + new token</b> in IndexedDB and re-derives the encryption key from the PIN.",code:"src/data/cryptoStore.js"},
+      {n:6,type:"d",txt:"<b>Done — account continuous, key rotated.</b>",
+        detail:"Because data clearing is common, the email-continuity design is what keeps the account stable across frequent re-enrolments.",code:"web §10"}
+    ]},
+  login:{ banner:"", summaryClass:"split", summaryNum:"0–2",
+    summaryHtml:"<b>Split by path.</b> The <b>offline PIN unlock is zero calls</b> (fully local). But <b>biometric login via WebAuthn needs the network</b> — a challenge + verify round trip — so it's roughly two calls. This is the key web delta: unlike native, web biometric login isn't truly offline, so the PIN is the offline path.",
+    steps:[
+      {n:1,type:"d",txt:"The user <b>opens the PWA</b> — the Service Worker serves the cached shell, so it loads with no network.",code:"src/sw.js (Cache API)"},
+      {n:2,type:"d",txt:"The app checks local state in <b>IndexedDB</b> (token + device key present) → shows login. A 100% local read.",code:"src/data/idb.js"},
+      {n:3,type:"n",delta:true,branch:"ok",branchTxt:"✓ online path · biometric",tagTxt:"→ Network · WebAuthn challenge",txt:"<b>Biometric login via a WebAuthn passkey</b> — but this <b>needs a server challenge</b>, so it only works online.",
+        detail:"<code>POST /webauthn/challenge</code> → <code>navigator.credentials.get({ challenge, userVerification:'required' })</code> → the OS draws Face ID / fingerprint / Windows Hello → the signed assertion is verified server-side. <code>UV:'required'</code> is what makes it biometric.",code:"src/auth/webauthn.js"},
+      {n:4,type:"d",delta:true,branch:"fb",branchTxt:"↳ offline path · PIN",txt:"<b>PIN / passphrase unlock</b> — the offline path, and the default when there's no signal.",
+        detail:"The PIN <em>derives</em> (PBKDF2 / Argon2) the AES key that decrypts the local store, so entering it both authenticates <b>and</b> unlocks the data. Better than storing the PIN — the web has no hardware-sealed secret store.",code:"src/auth/pin.js · src/data/cryptoStore.js"},
+      {n:5,type:"d",txt:"<b>Authenticated → Home.</b> The offline PIN path contacted no server; the biometric path used the network only for its WebAuthn challenge."}
+    ]},
+  offline:{ banner:"", summaryClass:"zero", summaryNum:"0",
+    summaryHtml:"<b>Capturing data costs zero network calls.</b> Delivery is <b>tiered by browser</b>: on Chromium the Service Worker can flush even when the PWA is closed; everywhere else — including <b>iOS Safari</b> — sync is <b>foreground-only</b>. The queue/retry logic is identical to native.",
+    steps:[
+      {phase:"While offline — capture, sign, queue"},
+      {n:1,type:"d",txt:"The user types a title + description and taps <b>Capture</b>.",code:"src/data/eventRepo.js"},
+      {n:2,type:"d",delta:true,txt:"The event is <b>written to IndexedDB</b>; sensitive fields are <b>encrypted at rest</b> with a PIN-derived key.",
+        detail:"IndexedDB isn't encrypted by default, so encrypt with <b>AES-GCM</b> (Web Crypto) using a key derived from the PIN (not stored, reconstructed at unlock). Call <code>navigator.storage.persist()</code> to resist eviction.",code:"src/data/idb.js · cryptoStore.js"},
+      {n:3,type:"d",txt:"The app <b>freezes the event into one exact JSON string</b> (a deliberately fixed key order).",code:"canonical JSON.stringify"},
+      {n:4,type:"d",tagTxt:"On-device · software key",delta:true,txt:"The app <b>signs the exact bytes with the Web Crypto key</b> — then <b>converts the signature</b>.",
+        detail:"<code>crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'})</code> emits <b>raw IEEE P1363</b> (<code>r‖s</code>, 64 B). Convert to DER (ASN.1) client-side, or set <code>dsaEncoding:'ieee-p1363'</code> server-side. <b>This is the web wire gotcha.</b>",code:"src/crypto/deviceKey.js (p1363ToDer)"},
+      {n:5,type:"d",txt:"An <b>immutable signed envelope is enqueued</b> in IndexedDB (<code>SyncQueueItem</code>, PENDING).",code:"sync_queue (IndexedDB)"},
+      {n:6,type:"d",txt:"The app <b>asks the Service Worker to sync</b>.",
+        detail:"<code>registration.sync.register('flush-queue')</code> on Chromium; elsewhere it waits for an <code>online</code> / foreground trigger.",code:"src/sw.js"},
+      {n:7,type:"d",txt:"The <b>queue badge and statuses update</b> from an IndexedDB read.",code:"src/data/eventRepo.js"},
+      {phase:"When connectivity returns — drain &amp; verify (browser-tiered)"},
+      {n:8,type:"d",delta:true,txt:"A <b>trigger fires</b> — but support is <b>tiered</b>: Chromium can flush from a closed PWA via Background Sync; everywhere else (incl. <b>iOS Safari</b>) sync is foreground-only.",
+        detail:"Best: SW <code>sync</code> event on reconnect even if the page is closed (+ Periodic Background Sync, installed Chromium). Universal fallback: <code>online</code> / <code>visibilitychange</code> / <code>navigator.onLine</code> — needs the app open. iOS Safari: no background sync.",code:"src/sw.js · online events"},
+      {n:9,type:"n",tagTxt:"→ Network · per item",txt:"The engine <b>drains the outbox oldest-first</b>; per item it posts the <b>stored payload + signature verbatim</b>.",code:"src/data/syncEngine.js"},
+      {n:10,type:"n",tagTxt:"← Network · verify",txt:"The <b>server re-checks the stamp</b> (unchanged <code>server.js</code>, given the §C signature handling). 2xx → DONE; failure → FAILED, retried.",
+        detail:"Works because the P1363 signature was converted to DER (or the server set to accept P1363). Public key already matched as spki.",code:"server.js POST /sync (shared)"}
+    ]}
+}
+};
+
+/* ---------- platform deltas (three-way) ---------- */
+const DELTAS = [
+  {title:"Signature format", sev:["break","Web converts"],
+    a:"<code>Signature(\"SHA256withECDSA\")</code> → DER (X9.62). ✅",
+    i:"<code>.ecdsaSignatureMessageX962SHA256</code> → DER (X9.62). ✅",
+    w:"<code>crypto.subtle.sign</code> → <b>raw IEEE P1363</b> (<code>r‖s</code>, 64 B). ❌",
+    note:"<b>Android &amp; iOS are interchangeable.</b> The web emits raw <code>r‖s</code> and must <b>convert P1363 → DER</b> client-side (~20 lines of ASN.1), or the server line can be set to <code>dsaEncoding:'ieee-p1363'</code>. Recommended: convert client-side so the server stays format-agnostic."},
+  {title:"Public-key encoding", sev:["break","iOS wraps"],
+    a:"<code>certificate.publicKey.encoded</code> is <b>already spki DER</b>. ✅",
+    i:"<code>SecKeyCopyExternalRepresentation</code> → <b>raw X9.63 point</b> (65 B), not spki. ❌",
+    w:"<code>crypto.subtle.exportKey('spki')</code> → <b>spki DER</b>. ✅ (better than iOS)",
+    note:"<b>The iOS gotcha.</b> iOS must prepend the fixed 26-byte P-256 spki header before base64 or the server's <code>type:'spki'</code> import fails. Android and web both produce spki for free.",
+    hex:"P-256 SPKI prefix (26 bytes, constant) — iOS only:\n<span class='c'>30 59 30 13 06 07 2A 86 48 CE 3D 02 01</span>\n<span class='c'>06 08 2A 86 48 CE 3D 03 01 07 03 42 00</span>\nthen append the 65-byte 0x04‖X‖Y point → 91 bytes → base64"},
+  {title:"Device signing key", sev:["break","Web: not hardware"],
+    a:"<b>Android Keystore</b> (TEE / StrongBox). Non-exportable, resists local malware.",
+    i:"<b>Secure Enclave</b>, P-256 only — exactly what we use. Non-exportable, resists local malware.",
+    w:"<b>Web Crypto</b> key, non-exportable <em>from JS</em> but <b>software-protected</b> (sandbox + disk encryption), <b>not</b> a secure element. Erased on clear-site-data.",
+    note:"<b>The core security delta.</b> Native keys sit in a tamper-resistant chip; the web key can be <em>used</em> by injected script while the page is open (it can't be exfiltrated, but XSS is the dominant web threat). If a hardware-isolated key is a hard requirement, the web can't meet it. Both native sides share the deliberate choice not to bind the key to biometrics, so background signing works."},
+  {title:"Biometric login & fallback", sev:["behav","Behavioural"],
+    a:"<code>BiometricPrompt</code>; app owns the PIN fallback; fully offline.",
+    i:"<code>LAContext.evaluatePolicy</code>; <code>.deviceOwnerAuthentication</code> can fall back to the <b>device passcode</b>, so the app PIN is optional; fully offline.",
+    w:"<b>WebAuthn passkey</b> (hardware-backed) — but it normally needs a <b>server challenge</b>, so biometric login is online-leaning; the <b>PIN is the offline path</b>.",
+    note:"Web also forces a <b>two-key split</b>: the passkey does login assertions only and can't sign event payloads, so a separate software Web Crypto key does the payload signing."},
+  {title:"Background sync", sev:["behav","Behavioural · biggest"],
+    a:"<b>WorkManager</b>: guaranteed deferred execution + a ~15-min periodic backstop + constraint triggers.",
+    i:"<b>Best-effort</b>: foreground flush (<code>NWPathMonitor</code>) + background <code>URLSession</code> + <code>BGTaskScheduler</code>. No guaranteed interval.",
+    w:"<b>Chromium only</b> (SW Background Sync, even when closed); <b>absent on iOS Safari</b> → foreground-only there.",
+    note:"The queue/retry logic is <b>identical</b> everywhere; only the scheduling reliability differs. Worst case (iOS Safari PWA) the queue drains only while the app is open — plan UX for “syncs when you next open it.”"},
+  {title:"Local storage & at-rest crypto", sev:["platform","Platform"],
+    a:"<code>EncryptedSharedPreferences</code> + <b>Room + SQLCipher</b>, hardware-keyed.",
+    i:"<b>Keychain</b> (<code>…ThisDeviceOnly</code>) + <b>SQLCipher via GRDB</b> (or Core Data + Data Protection).",
+    w:"<b>IndexedDB</b> — not encrypted by default; <b>DIY AES-GCM</b> with a <b>PIN-derived</b> key (PBKDF2 / Argon2). Can be <b>evicted</b>.",
+    note:"Native gets hardware-sealed key storage; the web reconstructs its encryption key from the PIN at unlock and must guard against storage eviction with <code>storage.persist()</code>."},
+  {title:"Device identifier & attestation", sev:["platform","Platform"],
+    a:"<code>ANDROID_ID</code> — a label, not security.",
+    i:"<code>identifierForVendor</code> — a label. <b>Bonus:</b> App Attest (<code>DCAppAttestService</code>) — proof of a genuine app on a real device.",
+    w:"<b>Generated UUID</b> in IndexedDB — no hardware id; <b>resets on data clear</b>.",
+    note:"None of these are security boundaries on their own. iOS App Attest is the strongest upgrade path; the web has the weakest device anchor."},
+  {title:"Re-registration trigger", sev:["design","Same design · 3 twists"],
+    a:"Reinstall wipes local state → fresh enrolment; designed flow rebinds via email continuity.",
+    i:"Keychain <code>…ThisDeviceOnly</code> → key never restores to a new iPhone, so migration is <em>always</em> a new-device re-registration.",
+    w:"Clearing site data / switching browser / eviction all force re-enrolment — <b>most frequent</b> of the three.",
+    note:"Same email-continuity design across all three (server matches on email, returns the existing <code>userId</code>, grace-windows the old key). The web just hits it more often, so make re-registration cheap and warn before data is cleared."}
+];
+const RENAMES = [
+  ["Jetpack Compose","SwiftUI / HTML+JS"],["ConnectivityManager","NWPathMonitor / online events"],
+  ["Retrofit + Moshi","URLSession+Codable / fetch+JSON"],["ViewModel","ObservableObject / module state"],
+  ["Room + SQLCipher","GRDB+SQLCipher / IndexedDB"],["WorkManager","BGTask+URLSession / Service Worker"]
+];
+
+/* ---------- approach comparison ---------- */
+const APPROACH = {
+  tldr:"ScaffGuard's whole premise is a <b>hardware-rooted, device-bound identity</b> plus <b>reliable offline-first sync</b>. That premise is <b>fully met by native</b> (Android + iOS), <b>partially met by a PWA</b> (no hardware key isolation; weak background sync on iOS), and <b>fully met by one cross-platform native codebase</b> (Flutter / React Native) — usually the best effort-to-coverage trade-off. Choose native (ideally cross-platform native) if the hardware key is a hard requirement; choose PWA if reach, zero-install and instant updates matter more than hardware-grade security.",
+  reqs:[
+    {h:"1 · Hardware-rooted device identity",p:"A private key in a tamper-resistant secure element (TEE / StrongBox / Secure Enclave) that signs event payloads and can't be exfiltrated, even by local malware.",
+     scores:[["a","Native","ok"],["w","PWA","bad"],["x","Cross-platform","ok"]]},
+    {h:"2 · Reliable offline-first sync",p:"Capture offline, with a queue that drains even when the app isn't open.",
+     scores:[["a","Android","ok"],["i","iOS","warn"],["w","PWA","bad"],["x","Cross-platform","ok"]]}
+  ],
+  approaches:[
+    {name:"Native Android / iOS", tag:["platform","two codebases"], spot:false,
+     pros:["Meets both dominant requirements fully — hardware key isolation + reliable offline sync (WorkManager is the gold standard).","Best security posture (no DOM/XSS surface), best UX/perf, deepest device APIs.","Offline biometric login works cleanly."],
+     cons:["Two codebases, two skill sets, double the maintenance.","App-store review friction; slower updates.","Highest total build + run cost for full coverage.","iOS background sync is best-effort (still far better than web)."],
+     best:"Security is paramount and you need both platforms with maximal control — but it's the most expensive route."},
+    {name:"Mobile Web / PWA", tag:["behav","one codebase, any browser"], spot:false,
+     pros:["One codebase, every device with a browser; instant access via URL.","Instant updates — no store review; ship many times a day.","Cheapest and fastest to build; lowest install friction (huge for occasional / contractor users).","Still genuinely offline-capable (Service Worker + IndexedDB) and installable."],
+     cons:["No hardware-isolated key for payload signing — the core device-binding premise is weakened; XSS is the top threat.","Background sync is Chromium-only and absent on iOS Safari → on iPhones the queue drains only while open.","Offline biometric login is awkward (WebAuthn challenge model); the PIN becomes the offline unlock.","Storage can be evicted/cleared, forcing re-registration; weaker at-rest guarantees; limited push on iOS."],
+     best:"Broad reach, zero-install and update speed outweigh hardware-grade device identity — or a pilot / MVP to validate the workflow before investing in native."},
+    {name:"Cross-platform native (Flutter / React Native + Expo / Kotlin Multiplatform)", tag:["same","usual sweet spot"], spot:true,
+     pros:["One codebase → both app stores, while still calling native Keystore / Secure Enclave / biometrics / background APIs via plugins → meets both dominant requirements.","Much lower build + maintenance cost than two native apps; near-native UX.","Capacitor can reuse a web UI but add native security plugins — a bridge between PWA and native."],
+     cons:["Plugin/abstraction risk for cutting-edge crypto/security APIs (you may still write a little native glue).","Slightly less control/perf than pure native at the edges; another toolchain.","Still subject to app-store review."],
+     best:"You want native-grade security + both platforms at a fraction of the two-codebase cost. For ScaffGuard specifically, this is usually the sweet spot."}
+  ],
+  matrixCols:[
+    ["a","Android","Native Android only — a single Kotlin codebase that ships to the Play Store. This is the version built today."],
+    ["i","iOS","Native iOS only — a single Swift codebase that ships to the App Store. Designed in this repo, not yet built."],
+    ["w","Web","Mobile web / PWA — one web codebase that runs in any browser and can install to the home screen. Cannot use a hardware key."],
+    ["x","Cross-platform","ONE shared codebase (Flutter, React Native / Expo, or Kotlin Multiplatform) that builds BOTH native apps and still uses each phone's hardware security chip. See §5 for the full assessment."]
+  ],
+  matrix:[
+    ["Hardware-rooted signing key","ok","ok","bad","ok"],
+    ["Biometric auth quality","ok","ok","warn","ok"],
+    ["Offline data capture","ok","ok","ok","ok"],
+    ["Background sync reliability","ok","warn","bad","ok"],
+    ["Encryption at rest","ok","ok","warn","ok"],
+    ["Resistance to XSS / injection","ok","ok","bad","ok"],
+    ["Reach / one codebase","bad","bad","ok","ok"],
+    ["Zero-install / instant access","bad","bad","ok","bad"],
+    ["Instant updates (no review)","bad","bad","ok","bad"],
+    ["App-store distribution","ok","ok","warn","ok"],
+    ["Push notifications","ok","ok","warn","ok"],
+    ["Device API depth","ok","ok","warn","ok"],
+    ["UX / performance","ok","ok","warn","ok"],
+    ["Build cost","warn","warn","ok","ok"],
+    ["Maintenance cost","warn","warn","ok","ok"],
+    ["Time to market","warn","warn","ok","ok"],
+    ["Offline storage durability","ok","ok","warn","ok"]
+  ],
+  guide:[
+    {q:"Is a hardware-isolated, non-exportable signing key a HARD requirement?",
+     items:["<b>Yes</b> + need both iOS &amp; Android → <b>cross-platform native</b> (usual best value), or two native apps for max control / perf.","<b>Yes</b> + one platform only → the single native platform you need (this repo's Android, or the iOS design).","<b>No</b>, and reach / zero-install / instant updates or an MVP matters most → <b>PWA</b>; revisit native if hardware identity later becomes required."]},
+    {q:"Quick heuristics",
+     items:["<b>Field workers on managed devices</b> (ScaffGuard's likely context) → native / cross-platform native.","<b>Many occasional / BYOD / “just send a link” users</b> → PWA wins on friction.","<b>Regulatory / contractual demand for tamper-resistant key storage</b> → rules out PWA for the signing key.","<b>Tight budget / ship next week to test the idea</b> → PWA, then graduate."]}
+  ],
+  phased:[
+    "<b>Now:</b> the native <b>Android</b> app (in this repo) proves the full hardware-rooted, offline-first model end-to-end.",
+    "<b>Next, for coverage at low cost:</b> evaluate a <b>cross-platform native</b> rebuild (Flutter / React Native) to get iOS without a second full codebase, keeping the hardware key + reliable background sync.",
+    "<b>Where reach matters more than hardware security</b> (a read-mostly portal, onboarding contractors): ship the <b>PWA</b> alongside, accepting the software-key trade-off and foreground-only sync on iOS."
+  ],
+  stake:"Native apps give the strongest security — a secret key locked in the phone's security chip that can't be copied — and the most reliable background syncing, but cost the most because they're separate apps. A mobile web app is the cheapest, reaches every phone via a link and updates instantly, but it can't lock the key in the security chip and syncs less reliably in the background on iPhones. The usual best compromise is a single <b>cross-platform</b> codebase that still uses each phone's security chip — native-grade security and both app stores at roughly half the cost of building two native apps."
+};
+
+/* ---------- cross-platform explainer ---------- */
+const XPLAT = {
+  intro:`
+    <div class="dintro">
+      <h2>A single codebase could build both the iOS and Android apps — with conditions</h2>
+      <p>A <b>cross-platform native</b> framework lets one team write the app <b>once</b>, then build it into <b>two genuinely native apps</b> — a real Android app for the Play Store and a real iOS app for the App Store. It is <em>not</em> a website in a wrapper: these are actual native apps that use each phone's hardware.</p>
+    </div>
+    <div class="fan">
+      <div class="fanbox src"><span class="badge">write once</span><h4>One codebase</h4><p>Flutter (Dart) · React Native (JS/TS) · Kotlin Multiplatform · .NET MAUI</p></div>
+      <div class="fanarrow">→</div>
+      <div class="fanright">
+        <div class="fanbox an"><span class="badge">builds to</span><h4>Android app · Play Store</h4><p>Real .aab / .apk, uses Android Keystore</p></div>
+        <div class="fanbox io"><span class="badge">builds to</span><h4>iOS app · App Store</h4><p>Real .ipa, uses the Secure Enclave</p></div>
+      </div>
+    </div>
+    <p class="xnote">For contrast: <b>two native apps</b> = two codebases to write and maintain. A <b>PWA</b> = one codebase but a website — no app-store presence and a software-only key. Cross-platform native sits in between: one codebase, two store apps, hardware key kept.</p>`,
+
+  exec:`
+    <div class="sech">Why it matters (the business case)</div>
+    <div class="reqcards" style="grid-template-columns:repeat(3,1fr)">
+      <div class="reqcard"><h4>💷 Cost</h4><p>Roughly <b>half</b> the build + maintenance of two separate native apps — one team, one codebase, two stores.</p></div>
+      <div class="reqcard"><h4>📱 Coverage</h4><p>Both app stores, every modern iPhone and Android — no platform left out.</p></div>
+      <div class="reqcard"><h4>🔒 Security kept</h4><p>Still uses each phone's <b>hardware security chip</b>, so ScaffGuard's core promise — an unforgeable, device-bound key — survives. The web option can't do this.</p></div>
+    </div>
+
+    <div class="sech">Relative cost to cover both platforms</div>
+    <div class="costbars">
+      <div class="cbrow"><span class="cblabel">Two native apps</span><div class="cbtrack"><div class="cbfill hi" style="width:100%">highest — two of everything</div></div></div>
+      <div class="cbrow"><span class="cblabel">Cross-platform native</span><div class="cbtrack"><div class="cbfill mid" style="width:55%">~half</div></div></div>
+      <div class="cbrow"><span class="cblabel">PWA (web)</span><div class="cbtrack"><div class="cbfill lo" style="width:32%">lowest *</div></div></div>
+    </div>
+    <p class="xnote">* The PWA is cheapest but <b>cannot</b> use the hardware security chip — that's a different security tier, not just a cheaper version of the same thing.</p>
+
+    <div class="sech">The honest catches</div>
+    <ul class="keylist">
+      <li><span class="k warn">Not 100% shared</span><span>A small slice of work stays platform-specific — the security chip and background syncing genuinely differ between iOS and Android — so it's "mostly one codebase," not literally all of it.</span></li>
+      <li><span class="k warn">Store review</span><span>It's still real apps, so updates go through App Store / Play Store review (days), not instantly. Only the PWA updates instantly.</span></li>
+      <li><span class="k warn">Framework lag</span><span>If Apple or Google ships a brand-new security feature, the framework or a plugin may take a few months to support it — a minor, manageable risk.</span></li>
+    </ul>
+
+    <div class="sech">Bottom line for ScaffGuard</div>
+    <div class="stake"><b>This is the sweet spot:</b> native-grade security (the hardware key + reliable background sync) <b>and</b> both app stores, at roughly half the cost of building two separate native apps. The recommended path is to keep the built <b>Android</b> app as proof, then do a <b>cross-platform rebuild</b> to add iOS without standing up a whole second codebase — and only add a PWA later if reach matters more than hardware security for some users.</div>`,
+
+  dev:`
+    <div class="sech">What it actually compiles to</div>
+    <p class="xnote" style="font-size:13.5px;color:var(--muted)">Real native binaries — <code style="font-family:var(--mono);color:var(--net-ink)">.aab/.apk</code> and <code style="font-family:var(--mono);color:var(--net-ink)">.ipa</code> — running as native processes with near-native performance. Not a webview. (The one exception is <b>Capacitor</b>, which is a web UI in a native shell plus native plugins — the bridge between the PWA and native worlds.)</p>
+
+    <div class="sech">The main frameworks</div>
+    <div class="matrix"><table>
+      <thead><tr><th>Framework</th><th>Language</th><th>UI approach</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td><b>Flutter</b></td><td>Dart</td><td>Own rendering engine</td><td>Pixel-identical UI on both; strong tooling</td></tr>
+        <tr><td><b>React Native</b></td><td>JS / TS</td><td>Real native widgets</td><td>Largest ecosystem; reuse web skills</td></tr>
+        <tr><td><b>Kotlin Multiplatform</b></td><td>Kotlin</td><td>Share logic, native UI each side</td><td>Least abstraction over native; reuses the existing Kotlin</td></tr>
+        <tr><td><b>.NET MAUI</b></td><td>C#</td><td>Native UI</td><td>Good fit for a .NET shop</td></tr>
+        <tr><td><b>Capacitor</b></td><td>Web (HTML/JS)</td><td>Webview + native plugins</td><td>Reuse a web UI, add native security plugins</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="sech">What's shared vs what stays native</div>
+    <div class="splitbar"><div class="seg shared" style="flex-basis:87%">~85–90% shared code</div><div class="seg native" style="flex-basis:13%">native glue</div></div>
+    <ul class="keylist">
+      <li><span class="k">Shared (write once)</span><span>UI, navigation, networking, the local DB, business logic, and the whole <b>sign → queue → retry → sync</b> pipeline incl. the canonical payload and the status lifecycle.</span></li>
+      <li><span class="k warn">Hardware key</span><span>Android <b>Keystore</b> (Kotlin) vs iOS <b>Secure Enclave</b> (Swift) have no unified API → a thin <code style="font-family:var(--mono);color:var(--net-ink)">DeviceKey</code> plugin behind a shared interface, occasionally with a little hand-written native glue.</span></li>
+      <li><span class="k warn">Background sync</span><span>Android <b>WorkManager</b> vs iOS <b>BGTaskScheduler + background URLSession</b> — same per-platform plugin pattern; the queue/retry logic above it is shared.</span></li>
+    </ul>
+
+    <div class="sech">How it maps to ScaffGuard's existing flows</div>
+    <p class="xnote" style="font-size:13.5px;color:var(--muted)">Shared code calls something like <code style="font-family:var(--mono);color:var(--net-ink)">deviceKey.sign(bytes)</code>; behind the interface sit the exact classes from the native designs — <code style="font-family:var(--mono);color:var(--net-ink)">KeystoreManager.kt</code> on Android and <code style="font-family:var(--mono);color:var(--net-ink)">SecureEnclaveManager.swift</code> on iOS. The <b>§C crypto contract still applies</b>: ensure the plugin returns a <b>DER signature</b> and an <b>spki public key</b> so the unchanged <code style="font-family:var(--mono);color:var(--net-ink)">server.js</code> verifies it — and prove it with a <code style="font-family:var(--mono);color:var(--net-ink)">test-contract.js</code>-style round-trip <em>on each target</em>.</p>
+
+    <div class="sech">Risks &amp; gotchas</div>
+    <ul class="keylist">
+      <li><span class="k warn">Plugin risk</span><span>Cutting-edge crypto/security APIs may not have a mature plugin yet — budget for writing thin native glue (Kotlin + Swift) behind a shared interface.</span></li>
+      <li><span class="k warn">Edge control</span><span>Slightly less control/perf than pure native at the very edges; one more toolchain to own.</span></li>
+      <li><span class="k warn">Store review</span><span>Still subject to App Store / Play Store review — no instant updates (that's the PWA's edge).</span></li>
+    </ul>`
+};
+
+/* ---------- plain-english tooltips for jargon row labels ---------- */
+const DIMDEFS = {
+  "Hardware-rooted signing key":"A private signing key kept inside a tamper-resistant security chip (TEE / StrongBox / Secure Enclave) that can't be copied off the device. ScaffGuard's core promise.",
+  "Biometric auth quality":"How well fingerprint / Face ID login works — including whether it works with no network.",
+  "Background sync reliability":"Whether the queue can drain when the app is closed, and how dependable that is.",
+  "Encryption at rest":"Whether local data on the device is encrypted, and whether the encryption key is hardware-protected.",
+  "Resistance to XSS / injection":"How exposed the app is to malicious injected scripts. Native apps have no web page to inject into; a web app's top threat.",
+  "Reach / one codebase":"Can you cover everyone from a single codebase, rather than maintaining one per platform?",
+  "Zero-install / instant access":"Can a user start using it immediately from a link, with nothing to install from a store?",
+  "Instant updates (no review)":"Can you ship a fix immediately, or must each update pass App Store / Play Store review first?",
+  "App-store distribution":"Discoverability and distribution through the official app stores.",
+  "Device API depth":"Access to camera, Bluetooth, NFC, sensors and other device features.",
+  "UX / performance":"How close the experience feels to a hand-built native app.",
+  "Build cost":"The one-off cost to build and ship to all needed platforms.",
+  "Maintenance cost":"The ongoing cost of keeping it running across platforms.",
+  "Time to market":"How quickly you can get a working version in users' hands.",
+  "Offline storage durability":"How safe locally-stored data is from being evicted or cleared by the OS / browser."
+};
+
+/* ---------- per-cell "why this rating" (order: Android, iOS, Web, Cross-platform) ---------- */
+const WHY = {
+  "Hardware-rooted signing key":[
+    "Android Keystore (TEE / StrongBox) holds a non-exportable key — hardware-isolated.",
+    "Secure Enclave holds a non-exportable P-256 key — hardware-isolated.",
+    "Web Crypto keys are software / browser-protected, not in a secure element — the core premise the web can't meet.",
+    "Reaches the native Keystore / Secure Enclave via a plugin — same hardware isolation as native."],
+  "Biometric auth quality":[
+    "BiometricPrompt; works fully offline.",
+    "Face ID / Touch ID via LocalAuthentication; works fully offline.",
+    "WebAuthn passkeys are hardware-backed but normally need a server challenge, so biometric login is online-leaning; the PIN is the offline path.",
+    "Uses the platform's native biometric APIs — same quality as native."],
+  "Offline data capture":[
+    "Writes to an encrypted local DB with no network.",
+    "Writes to an encrypted local DB with no network.",
+    "Writes to IndexedDB offline (encrypt sensitive fields with a PIN-derived key).",
+    "Native encrypted local DB — offline by design."],
+  "Background sync reliability":[
+    "WorkManager gives guaranteed deferred execution + a ~15-min periodic backstop, even when the app is closed.",
+    "No guaranteed background scheduler — best-effort BGTaskScheduler + background URLSession + foreground flush. Works, but the OS controls timing and there's no fixed interval.",
+    "Background Sync is Chromium-only and absent on iOS Safari, so on iPhones the queue drains only while the PWA is open.",
+    "Uses native WorkManager / BGTask under the hood — same reliability as native, per platform."],
+  "Encryption at rest":[
+    "SQLCipher DB keyed from a hardware-backed master key.",
+    "SQLCipher (GRDB) / Data Protection keyed from the Keychain.",
+    "IndexedDB isn't encrypted by default — you must DIY AES-GCM with a PIN-derived key; no hardware-sealed key store.",
+    "Native encrypted storage via plugins."],
+  "Resistance to XSS / injection":[
+    "No DOM / web page, so there's no script-injection surface.",
+    "No DOM / web page, so there's no script-injection surface.",
+    "A web origin's top threat: injected script can use the signing key while the page is open. Needs strict CSP, Trusted Types, httpOnly tokens.",
+    "Native UI (no DOM) — no XSS surface (a Capacitor webview would need the same web hardening)."],
+  "Reach / one codebase":[
+    "Android only — a separate codebase from iOS.",
+    "iOS only — a separate codebase from Android.",
+    "One codebase runs on any device with a modern browser.",
+    "One codebase builds both native apps."],
+  "Zero-install / instant access":[
+    "Must be installed from the Play Store first.",
+    "Must be installed from the App Store first.",
+    "Opens instantly from a URL; install to home screen is optional.",
+    "Still installed from the app stores."],
+  "Instant updates (no review)":[
+    "Updates go through Play Store review before users get them.",
+    "Updates go through App Store review before users get them.",
+    "Ship fixes instantly — no store review.",
+    "Still subject to store review (no instant updates)."],
+  "App-store distribution":[
+    "Distributed and discoverable via the Play Store.",
+    "Distributed and discoverable via the App Store.",
+    "PWA store listing is limited; mostly shared as a link.",
+    "Distributed via both official stores."],
+  "Push notifications":[
+    "Full native push support.",
+    "Full native push support.",
+    "Web push works only on installed PWAs, and only iOS 16.4+.",
+    "Full native push via platform APIs."],
+  "Device API depth":[
+    "Full access to camera, BLE, NFC, sensors.",
+    "Full access to camera, BLE, NFC, sensors.",
+    "Web device APIs are partial and permission-gated.",
+    "Full native device access via plugins."],
+  "UX / performance":[
+    "Native-class performance and feel.",
+    "Native-class performance and feel.",
+    "Good, but not native-class.",
+    "Near-native performance and feel."],
+  "Build cost":[
+    "One of the two native builds you'd need for full coverage.",
+    "One of the two native builds you'd need for full coverage.",
+    "Cheapest and fastest to build.",
+    "One codebase for both stores — far cheaper than two native apps."],
+  "Maintenance cost":[
+    "Maintaining two native codebases doubles ongoing effort.",
+    "Maintaining two native codebases doubles ongoing effort.",
+    "One codebase to maintain.",
+    "One codebase to maintain across two stores."],
+  "Time to market":[
+    "Slower — a native build per platform, plus store review.",
+    "Slower — a native build per platform, plus store review.",
+    "Fastest — no install and no review.",
+    "Fast — one build for both stores (still store review)."],
+  "Offline storage durability":[
+    "Durable encrypted local DB.",
+    "Durable encrypted local DB.",
+    "Browser storage can be evicted / cleared (esp. iOS ITP), forcing re-registration.",
+    "Durable native encrypted storage."]
+};
+
+/* ---------- capability × framework matrix (CROSS_PLATFORM_FRAMEWORKS.md §1) ---------- */
+const XFW = { caps:{
+  cols:[
+    ["fl","Flutter","Dart · own rendering engine · pixel-identical UI, strong tooling"],
+    ["rn","React Native","JS/TS · real native widgets · largest ecosystem, reuse web skills"],
+    ["kmp","KMP","Kotlin · shares logic, native UI · least abstraction; reuses this repo's Kotlin"],
+    ["maui",".NET MAUI","C# · native UI · good fit for a .NET shop"],
+    ["cap","Capacitor","Web UI in a WebView + native plugins · selectively harden"]
+  ],
+  rows:[
+    {label:"A · HW key signs payloads",ref:"§2",tip:"Generate and sign with the hardware key over arbitrary event payloads — ScaffGuard's security core.",cells:[
+      ["glue","Platform channel (a little Kotlin + Swift) for keygen/sign — no first-class plugin honours the non-biometric-gated policy."],
+      ["glue","A native module with the right access-control flags — off-the-shelf biometric-signing libs tend to force per-use biometrics, which breaks background sync."],
+      ["ok","expect/actual — the Android Keystore code in THIS repo is reused as the Android actual; you write the iOS actual."],
+      ["glue","Platform code + .NET bindings to KeyStore / Security (System.Security.Cryptography.ECDsa alone gives a SOFTWARE key)."],
+      ["glue","A native plugin for keygen/sign — otherwise it's a software-protected JS (Web Crypto) key."]]},
+    {label:"B · Biometric login",ref:"§3",tip:"Fingerprint / Face ID to unlock the local session.",cells:[
+      ["ok","local_auth"],["ok","biometrics libraries"],["ok","expect/actual"],["ok","Plugin.Fingerprint"],["ok","biometric plugin"]]},
+    {label:"C · Encrypted local store",ref:"§5.1",tip:"Encrypted DB + secure secret storage at rest.",cells:[
+      ["ok","flutter_secure_storage + SQLCipher (drift)"],["ok","react-native-keychain + SQLCipher (op-sqlite)"],["ok","SQLDelight + SQLCipher"],["ok","SecureStorage + SQLCipher"],["ok","secure-storage + SQLite(cipher) plugins"]]},
+    {label:"D · Deferred / background sync",ref:"§6",tip:"Queue drains when the app is closed — guaranteed on Android, best-effort on iOS everywhere.",cells:[
+      ["warn","Android: workmanager ✓. iOS: best-effort — a platform limit, not a framework one."],
+      ["warn","Android: background-fetch / Headless JS ✓. iOS: best-effort (platform limit)."],
+      ["warn","Android: WorkManager ✓. iOS: best-effort (platform limit)."],
+      ["warn","Android: ✓ via bindings. iOS: best-effort (platform limit)."],
+      ["warn","Better than a pure PWA via a plugin, but iOS still limited."]]},
+    {label:"E · Crypto contract",ref:"§C",tip:"Wire formats the shared server expects: spki public key + DER signature.",cells:[
+      ["ok","Matches native (spki + DER) when you sign in the native channel."],
+      ["ok","Matches native (spki + DER) signing in the native module; sign in JS and you inherit P1363→DER + a software key."],
+      ["ok","Each side uses its native API → encodings correct per platform."],
+      ["ok","Via the platform bindings → native encoding."],
+      ["warn","Public key spki ✓; but sign in the webview JS and the signature is P1363 → must convert to DER."]]},
+    {label:"F · UI (capture / badge / banner)",ref:"§F",tip:"The app's own screens.",cells:[
+      ["ok","Own rendering engine"],["ok","Native widgets"],["ok","Native (Compose + SwiftUI) or Compose Multiplatform"],["ok","Native"],["ok","Reuse the web UI"]]}
+  ]
+}};
+
+/* exec: insert the golden-rule condition before "The honest catches" */
+XPLAT.exec = XPLAT.exec.replace(`<div class="sech">The honest catches</div>`,
+`<div class="rulebox"><span class="rl">The one condition</span>
+<p>The security only holds if the <b>hardware key is generated and used in native code</b> — a small, well-understood slice. Sign it in the framework's general-purpose runtime instead and you've quietly dropped to the <b>web's software-key level</b>, not native. Every framework can do the native bit; it's a known, contained piece of work — <b>smallest with Kotlin Multiplatform</b>, since the Android code already exists in this repo.</p></div>
+<div class="sech">The honest catches</div>`);
+
+/* dev: golden rule + the two rules that bite, before "The main frameworks" */
+XPLAT.dev = XPLAT.dev.replace(`<div class="sech">The main frameworks</div>`,
+`<div class="sech">The golden rule (applies to all five)</div>
+<div class="rulebox"><span class="rl">Non-negotiable</span>
+<p>ScaffGuard's security rests on <b>capabilities, not a language</b>. The design works on any of these frameworks — <b>provided the security-critical operations run in native code</b>.</p>
+<p>The hardware-rooted signing key <b>MUST be generated and signed in native code</b> (Android Keystore / iOS Secure Enclave). Sign in the framework's managed / JS runtime (<code>pointycastle</code>, <code>elliptic</code>/Web Crypto, .NET <code>ECDsa</code>) and the key becomes <b>software-protected</b> — you've quietly rebuilt the <em>web</em> security level, not the native one.</p></div>
+<ul class="keylist">
+  <li><span class="k warn">No per-use biometric</span><span>Reproduce the “key is NOT biometric-gated per signature” decision (design §2.3). Some plugins (e.g. <code style="font-family:var(--mono)">react-native-biometrics</code>) force a biometric prompt on <em>every</em> signature — that breaks background sync. You need a key created with private-key-usage, <b>no biometry</b> — often a small custom native module, not an off-the-shelf plugin.</span></li>
+  <li><span class="k warn">Encoding follows the path</span><span>Sign natively → Android-style <b>spki + DER for free</b>. Sign in JS / Web Crypto (a Capacitor webview) → public key is spki but the <b>signature is P1363 and must be converted to DER</b> (Web design §C).</span></li>
+  <li><span class="k warn">iOS sync is a platform limit</span><span>No framework gives Android-WorkManager-grade background guarantees on iOS — it's an OS constraint everywhere.</span></li>
+</ul>
+<div class="sech">The main frameworks</div>`);
+
+/* dev: capability matrix + per-framework verdicts, before "What's shared vs what stays native" */
+XPLAT.dev = XPLAT.dev.replace(`<div class="sech">What's shared vs what stays native</div>`,
+`<div class="sech">Capability × framework — how easily each delivers the hard parts</div>
+{{CAPMATRIX}}
+<p class="xnote">Every framework can hit native-grade on A–C; the only ✓-vs-⚙ difference is <b>how much native code you personally write</b>. D's iOS column is a platform constraint everywhere; E is a consequence of <em>where you sign</em>.</p>
+<div class="sech">The five frameworks — verdicts</div>
+<div class="fwcard"><div class="fwh"><h3>Flutter</h3><span class="fwlang">Dart</span><span class="fwbest">one polished UI + a thin native shim</span></div><ul class="keylist">
+  <li><span class="k">Works?</span><span>Yes — <code style="font-family:var(--mono)">local_auth</code>, <code style="font-family:var(--mono)">flutter_secure_storage</code>, SQLCipher (<code style="font-family:var(--mono)">drift</code>), <code style="font-family:var(--mono)">workmanager</code> all exist.</span></li>
+  <li><span class="k warn">Native glue</span><span>The hardware signing key is the gap — no first-class arbitrary-payload Enclave/Keystore signer that also honours the non-biometric-gated policy, so expect a <b>platform channel</b> (a little Kotlin + Swift) for keygen/sign.</span></li>
+  <li><span class="k">Crypto</span><span>Sign in that native channel → spki + DER, matches the server.</span></li></ul></div>
+<div class="fwcard"><div class="fwh"><h3>React Native</h3><span class="fwlang">JS / TS</span><span class="fwbest">JS team + biggest ecosystem</span></div><ul class="keylist">
+  <li><span class="k">Works?</span><span>Yes — biometrics, <code style="font-family:var(--mono)">react-native-keychain</code>, SQLCipher (<code style="font-family:var(--mono)">op-sqlite</code>), background-fetch / Headless JS.</span></li>
+  <li><span class="k warn">Native glue</span><span>A <b>native module</b> for the signing key with the right access-control flags — off-the-shelf biometric-signing libs tend to force per-use biometrics, incompatible with background sync.</span></li>
+  <li><span class="k">Crypto</span><span>Prefer signing in the native module (spki + DER); sign in JS and you inherit the web's P1363→DER + software-key trade-offs.</span></li>
+  <li><span class="k">Expo</span><span>The usual way to build RN today. Bundles managed native modules + EAS cloud builds / OTA JS updates, and (via the Expo Modules API + config plugins) still lets you ship the custom native signer — so it doesn't change the rules above, just lowers the friction.</span></li></ul></div>
+<div class="fwcard spot"><div class="fwh"><h3>Kotlin Multiplatform</h3><span class="fwlang">Kotlin</span><span class="fwbest">best reuse of this repo</span></div><ul class="keylist">
+  <li><span class="k">Works?</span><span>Yes, with the <b>least abstraction</b>. Repositories, sync engine, DTOs and the canonical payload are shared Kotlin; platform specifics use <code style="font-family:var(--mono)">expect/actual</code>.</span></li>
+  <li><span class="k warn">Native glue</span><span>The Android <code style="font-family:var(--mono)">KeystoreManager</code>, <code style="font-family:var(--mono)">SecurePrefs</code>, WorkManager and BiometricPrompt code <b>already written here is reused as the Android actual</b>. You write the iOS actuals (Secure Enclave via Kotlin/Native → Security framework, LocalAuthentication, BGTasks) and the iOS UI (SwiftUI, or Compose Multiplatform).</span></li>
+  <li><span class="k">Crypto</span><span>Each side uses its native API → encodings correct per platform.</span></li></ul></div>
+<div class="fwcard"><div class="fwh"><h3>.NET MAUI</h3><span class="fwlang">C#</span><span class="fwbest">a .NET shop</span></div><ul class="keylist">
+  <li><span class="k">Works?</span><span>Yes, if you're a .NET shop — Essentials <code style="font-family:var(--mono)">SecureStorage</code>, <code style="font-family:var(--mono)">Plugin.Fingerprint</code>, SQLCipher, background via bindings.</span></li>
+  <li><span class="k warn">Native glue</span><span>The hardware signing key uses <b>platform code + .NET bindings</b> to <code style="font-family:var(--mono)">KeyStore</code> / <code style="font-family:var(--mono)">Security</code> — note <code style="font-family:var(--mono)">System.Security.Cryptography.ECDsa</code> alone gives a <b>software</b> key, not hardware.</span></li>
+  <li><span class="k">Crypto</span><span>Via the platform bindings → native encoding.</span></li></ul></div>
+<div class="fwcard"><div class="fwh"><h3>Capacitor</h3><span class="fwlang">Web UI + native plugins</span><span class="fwbest">have a web UI, want to harden it</span></div><ul class="keylist">
+  <li><span class="k">Works?</span><span><b>Depends entirely on where you put the crypto.</b> It's the Web design in a WebView, plus native plugins. Keep keygen/sign in webview JS → you have the <b>web</b> security level (software key, P1363→DER). Move them into a <b>native plugin</b> (Keystore/Enclave) → you upgrade that piece to native-grade.</span></li>
+  <li><span class="k warn">Native glue</span><span>Secure-storage / biometric / SQLite plugins exist; the <b>arbitrary-payload hardware signer</b> is the one you'll likely build or extend. If you don't, treat it as the PWA design, not the native one.</span></li>
+  <li><span class="k">Crypto</span><span>spki ✓; signature P1363→DER if you sign in JS.</span></li></ul></div>
+<div class="sech">Do the designs survive cross-platform?</div>
+<ul class="keylist">
+  <li><span class="k">Architecture</span><span><b>Yes — unchanged.</b> The repositories, canonical signed payload, sync-queue state machine, status model and server contract are platform-neutral and port directly.</span></li>
+  <li><span class="k warn">Security</span><span>Survives <b>only if the key lives in native code</b>. Every framework can do this; the cost is some platform glue — <b>least in KMP</b>, since Android is already written.</span></li>
+  <li><span class="k">Contract</span><span>Still holds for one shared <code style="font-family:var(--mono)">server.js</code> (native → spki + DER; JS / Web Crypto → spki + P1363→DER).</span></li>
+  <li><span class="k warn">iOS sync</span><span>Stays best-effort no matter the framework — an OS limitation, not a framework one.</span></li>
+</ul>
+<div class="sech">Which framework when?</div>
+<ul class="keylist">
+  <li><span class="k">Reuse this repo</span><span><b>Kotlin Multiplatform</b> — the existing Kotlin becomes the Android side.</span></li>
+  <li><span class="k">One polished UI</span><span><b>Flutter</b> — with a small native crypto shim.</span></li>
+  <li><span class="k">JS team</span><span><b>React Native</b> — native widgets + the biggest library pool.</span></li>
+  <li><span class="k">.NET shop</span><span><b>.NET MAUI</b> — reuse C# skills.</span></li>
+  <li><span class="k">Have a web UI</span><span><b>Capacitor</b> — push the security-critical ops into native plugins.</span></li>
+</ul>
+<div class="sech">What's shared vs what stays native</div>`);
+
+/* reconcile existing cross-platform claims with the framework doc */
+WHY["Hardware-rooted signing key"][3]="Uses the native Keystore / Secure Enclave through a plugin — same hardware isolation, but ONLY if keygen + signing run in native code. Sign in the framework's JS / managed runtime and it silently drops to the web's software-key level.";
+WHY["Background sync reliability"][3]="Uses native WorkManager / BGTask under the hood — Android stays guaranteed, but iOS stays best-effort: an OS limit no framework removes.";
+APPROACH.approaches[2].pros.push("With Kotlin Multiplatform specifically, the Android Keystore / WorkManager / biometric code already in this repo is reused directly as the Android side — the thinnest path from what's built today.");
+
+/* ===== ScaffGuard — single scrolling technical-design document ===== */
+let plat="android", allOpen=false, tocOpen=true;
+const SYM={ok:"✓",warn:"⚠",bad:"✕"};
+const CAPSYM={ok:"✓",glue:"⚙",warn:"⚠"};
+function esc(s){return (s||"").replace(/"/g,"&quot;");}
+const PCOL={android:"andro",ios:"ios",web:"web"}, PLABEL={android:"Android",ios:"iOS",web:"Web / PWA"};
+
+const FLOW_KEYS=["registration","login","offline","rereg"];
+const FLOW_META={
+  registration:{n:"2.1",title:"Registration",sub:"once · needs the internet"},
+  login:{n:"2.2",title:"Login",sub:"every time · works offline"},
+  offline:{n:"2.3",title:"Offline capture & sync",sub:"the core value"},
+  rereg:{n:"2.4",title:"Re-registration",sub:"key rotation · proposed"}
+};
+const TOC=[
+  ["s-overview","1","Overview"],
+  ["s-flows","2","The flows"],
+  ["s-deltas","3","Platform deltas"],
+  ["s-approach","4","Delivery approach"],
+  ["s-frameworks","5","Cross-platform frameworks"],
+  ["s-glossary","6","Glossary"]
+];
+
+/* ---------- shared helpers ---------- */
+function showTip(t){ const e=document.getElementById("tiptoast"); e.querySelector(".tt-text").textContent=t; e.classList.add("show"); }
+function hideTip(){ document.getElementById("tiptoast").classList.remove("show"); }
+function scrollToSec(id){ hideTip(); const el=document.getElementById(id); if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); }
+function toggleStep(head){ head.closest(".card").classList.toggle("open"); }
+
+/* ---------- 1 · Overview ---------- */
+function modelHtml(){
+  const p=PLAT[plat];
+  return `<div class="model">
+    <div class="node phone"><h4>Device · ${p.devLabel}</h4><p>${p.privText}</p><span class="key ${p.privClass}">${p.privChip}</span></div>
+    <div class="arrow"><span class="line">registers the</span><span class="big">→</span><span class="line">public key</span></div>
+    <div class="node server"><h4>Server · shared</h4><p>Stores the matching public key per account and verifies each signed payload against it — proving data came from this registered device, unaltered. One Node server, all three clients.</p><span class="key pub">${p.pubChip}</span></div>
+  </div>`;
+}
+function renderOverview(){
+  const p=PLAT[plat];
+  document.getElementById("overview-content").innerHTML=`
+    <p class="ov-lead">This document sets out a <b>proposed approach</b> to ScaffGuard's identity and offline model. The core idea is to bind an account to a <b>hardware-rooted key pair</b> generated on the device: the private key never leaves it, and the server keeps only the matching public key, verifying every signed event against it. We propose carrying the same model to iOS and Web/PWA. It's what would let <b>login and data capture work fully offline</b> — signing happens on-device at capture time, and the server checks signatures later, on sync. It also weighs up the delivery options — building <b>natively for each platform</b>, a single <b>web app / PWA</b>, or one <b>cross-platform native codebase</b> (Flutter / React Native / KMP) — with a recommendation in §4.</p>
+    ${modelHtml()}
+    <p class="modelcap">The intent is for one Node server to serve all three clients. §3 sets out the per-platform encodings that would make that work; §4 proposes which client to build next; §5 assesses whether a single cross-platform codebase could hold up.</p>
+    <p class="pstack" style="margin-top:16px">${p.stack}</p>`;
+}
+
+/* ---------- 2 · Flows ---------- */
+function stepCardHtml(s){
+  if(s.phase) return `<div class="phase">${s.phase}</div>`;
+  const det = s.detail ? `<div class="detail"><div class="detail-in">${s.detail}${s.code?`<span class="codeline">↳ ${s.code}</span>`:""}</div></div>` : "";
+  const tag = s.type==="n" ? `<span class="tag n">🌐 ${s.tagTxt||"Network"}</span>` : `<span class="tag d">${s.tagTxt||"On-device"}</span>`;
+  const branch = s.branch?`<div class="branch ${s.branch}">${s.branchTxt}</div>`:"";
+  const dchip = s.delta ? `<div><button class="dchip" onclick="event.stopPropagation();scrollToSec('s-deltas')">Δ differs by platform</button></div>` : "";
+  const clk = s.detail ? `class="head clk" onclick="toggleStep(this)"` : `class="head"`;
+  const chev = s.detail ? `<span class="chev">▾</span>` : `<span class="chev" style="opacity:.2">·</span>`;
+  return `<div class="step ${s.type==="n"?"net":""}"><div class="rail"></div><div class="num">${s.n}</div>
+    <div class="card"><div ${clk}><div class="txt">${branch}${s.txt}${dchip}</div>${tag}${chev}</div>${det}</div></div>`;
+}
+function flowBlockHtml(key){
+  const f=FLOWS[plat][key], m=FLOW_META[key];
+  const banner = f.banner ? `<div class="banner ${plat==="ios"?"ios-note":plat==="web"?"web-note":""}">${f.banner}</div>` : "";
+  const steps = `<div class="flow">${f.steps.map(stepCardHtml).join("")}</div>`;
+  const summary = `<div class="summary ${f.summaryClass}"><div class="big">${f.summaryNum}</div><div><div class="lbl">Server calls in this flow</div><p>${f.summaryHtml}</p></div></div>`;
+  const chip=`<span class="crumb-plat chip-here" style="border-color:var(--${PCOL[plat]});color:var(--${PCOL[plat]})"><span class="pd" style="background:var(--${PCOL[plat]})"></span>${PLABEL[plat]}</span>`;
+  return `<div class="subsec" id="f-${key}">
+    <div class="subhead"><span class="sn">${m.n}</span><h3>${m.title}</h3><span class="ss">${m.sub}</span>${chip}</div>
+    ${banner}${steps}${summary}</div>`;
+}
+function lifecycleHtml(){
+  const p=PLAT[plat];
+  return `<div class="subsec" id="f-lifecycle">
+    <div class="subhead"><span class="sn">2.5</span><h3>Queue item status lifecycle</h3><span class="ss">all platforms</span></div>
+    <p class="sublead">Every captured event becomes one immutable signed envelope in the <code>sync_queue</code>. <code>${p.worker}</code> drains it oldest-first; a transient failure self-heals on the next sweep — nothing is dropped. <b>This lifecycle is identical on all three platforms</b> — only the scheduling that drives it differs.</p>
+    <div class="lifecycle">
+      <span class="lc-node n-pending">PENDING<small>enqueued at capture</small></span>
+      <span class="lc-ar"><b>▸</b>worker<br>picks up</span>
+      <span class="lc-node n-prog">IN_PROGRESS<small>POST /sync · attempts++</small></span>
+      <span class="lc-ar ok"><b>▸</b>server<br>2xx</span>
+      <span class="lc-node n-done">DONE<small>SiteEvent.synced = true</small></span>
+      <span class="lc-break"></span>
+      <span class="lc-node n-prog" style="opacity:.55">IN_PROGRESS</span>
+      <span class="lc-ar fail"><b>▸</b>4xx / 5xx<br>or net error</span>
+      <span class="lc-node n-fail">FAILED<small>HTTP code / message</small></span>
+      <span class="lc-ar"><b>↺</b>re-picked<br>next flush</span>
+      <span class="lc-node n-prog" style="opacity:.55">IN_PROGRESS</span>
+    </div>
+    <div class="triggers">${p.triggers.map(t=>`<div class="trig ${t.cls||""}"><h5>${t.h}</h5><p>${t.p}</p></div>`).join("")}</div>`;
+}
+function renderFlows(){
+  const legend=`<div class="legend">
+    <i><span class="dot d"></span> On-device — no network</i>
+    <i><span class="dot n"></span> Network — touches the server</i>
+    <i><button class="dchip" style="margin:0" onclick="scrollToSec('s-deltas')">Δ differs by platform</button> jumps to §3</i></div>`;
+  document.getElementById("flows-content").innerHTML = legend + FLOW_KEYS.map(flowBlockHtml).join("") + lifecycleHtml();
+}
+function toggleAllFlows(){
+  allOpen=!allOpen;
+  document.querySelectorAll("#s-flows .card").forEach(c=>{ if(c.querySelector(".detail")) c.classList.toggle("open",allOpen); });
+  document.getElementById("expandBtn").textContent = allOpen?"－ Collapse all detail":"＋ Expand all detail";
+}
+
+/* ---------- 3 · Platform deltas ---------- */
+function renderDeltas(){
+  const rows=DELTAS.map(d=>`
+    <div class="drow">
+      <div class="dh"><h3>${d.title}</h3><span class="sev ${d.sev[0]}">${d.sev[1]}</span></div>
+      <div class="dcols">
+        <div class="dcol a"><div class="pl"><span class="pd"></span>Android · built</div><p>${d.a}</p></div>
+        <div class="dcol i"><div class="pl"><span class="pd"></span>iOS · proposed</div><p>${d.i}</p></div>
+        <div class="dcol w"><div class="pl"><span class="pd"></span>Web · proposed</div><p>${d.w}</p></div>
+      </div>
+      ${d.hex?`<div class="hexbox">${d.hex}</div>`:""}
+      <p class="dnote">${d.note}</p>
+    </div>`).join("");
+  document.getElementById("deltas-content").innerHTML=`
+    <div class="dintro">
+      <p>Same product, same mock server. These are the deltas we'd need to handle, not 1:1 renames. The headline: get each platform's <b>signature</b> and <b>public-key</b> encoding right and one unchanged <code>server.js</code> should be able to serve all three clients.</p>
+    </div>
+    ${rows}
+    <details class="renames">
+      <summary>No-impact renames (Android → iOS / Web)</summary>
+      <table>${RENAMES.map(r=>`<tr><td>${r[0]}</td><td class="arr">→</td><td>${r[1]}</td></tr>`).join("")}</table>
+    </details>`;
+}
+
+/* ---------- 4 · Delivery approach ---------- */
+function renderApproach(){
+  const A=APPROACH;
+  const reqs=A.reqs.map(r=>`
+    <div class="reqcard"><h4>${r.h}</h4><p>${r.p}</p>
+      <div class="scorerow">${r.scores.map(s=>`<span class="score"><span class="sym ${s[2]}">${SYM[s[2]]}</span> ${s[1]}</span>`).join("")}</div></div>`).join("");
+  const cards=A.approaches.map(ap=>`
+    <div class="acard ${ap.spot?"spot":""}">
+      <div class="ah"><h3>${ap.name}</h3><span class="sev ${ap.tag[0]}">${ap.tag[1]}</span></div>
+      <div class="pcgrid">
+        <div class="pc pros"><h5>Pros</h5><ul>${ap.pros.map(x=>`<li>${x}</li>`).join("")}</ul></div>
+        <div class="pc cons"><h5>Cons</h5><ul>${ap.cons.map(x=>`<li>${x}</li>`).join("")}</ul></div>
+      </div>
+      <p class="bestwhen"><b>Best when:</b> ${ap.best}</p>
+    </div>`).join("");
+  const colColor=c=>c==='a'?'andro':c==='i'?'ios':c==='w'?'web':'text';
+  const coldefs=`<div class="coldefs">${A.matrixCols.map(c=>`
+    <div class="coldef"><span class="pd" style="background:var(--${colColor(c[0])})"></span><b>${c[1]}</b>${c[0]==='x'?`<button class="cdlink" onclick="scrollToSec('s-frameworks')">→ §5 frameworks</button>`:''}<span class="cdtxt">${c[2]}</span></div>`).join("")}</div>`;
+  const symkey=`<div class="symkey"><span><span class="sym ok">✓</span> strong</span><span><span class="sym warn">⚠</span> caveats</span><span><span class="sym bad">✕</span> weak / unavailable</span><span style="color:var(--muted)">· hover any label <b>or cell</b> for the reason</span></div>`;
+  const lastCol=A.matrixCols.length-1;
+  const head=`<tr><th>Dimension</th>${A.matrixCols.map((c,ci)=>`<th><span class="pd" style="background:var(--${colColor(c[0])})"></span><span class="tip${ci===lastCol?' edge':''}" data-tip="${esc(c[2])}">${c[1]}</span></th>`).join("")}</tr>`;
+  const fallback={ok:"Strong — no notable caveats.",warn:"Has caveats.",bad:"Weak or unavailable."};
+  const body=A.matrix.map(r=>{
+    const lbl = DIMDEFS[r[0]] ? `<span class="tip" data-tip="${esc(DIMDEFS[r[0]])}">${r[0]}</span>` : r[0];
+    const why = WHY[r[0]]||[];
+    const cells = r.slice(1).map((s,ci)=>`<td class="c celltip${ci===lastCol?' edge':''}" data-tip="${esc(why[ci]||fallback[s])}"><span class="sym ${s}">${SYM[s]}</span></td>`).join("");
+    return `<tr><td>${lbl}</td>${cells}</tr>`;
+  }).join("");
+  const guide=A.guide.map(g=>`<p class="q">${g.q}</p><ul>${g.items.map(i=>`<li>${i}</li>`).join("")}</ul>`).join("");
+  document.getElementById("approach-content").innerHTML=`
+    <div class="tldr"><h2>TL;DR</h2><p>${A.tldr}</p></div>
+    <div class="sech">The two requirements that decide it</div>
+    <div class="reqcards">${reqs}</div>
+    <div class="sech">Pros &amp; cons, per approach</div>
+    ${cards}
+    <div class="sech">Full comparison matrix</div>
+    ${coldefs}
+    ${symkey}
+    <div class="matrix"><table><thead>${head}</thead><tbody>${body}</tbody></table></div>
+    <div class="sech">Decision guide</div>
+    <div class="guide">${guide}</div>
+    <div class="sech">Recommended phased path</div>
+    <ol class="phasepath">${A.phased.map(p=>`<li>${p}</li>`).join("")}</ol>
+    <div class="sech">In one paragraph (for a non-technical stakeholder)</div>
+    <div class="stake">${A.stake}</div>`;
+}
+
+/* ---------- 5 · Cross-platform frameworks ---------- */
+function renderCapMatrix(){
+  const c=XFW.caps, last=c.cols.length-1;
+  const head=`<tr><th>Capability</th>${c.cols.map((col,ci)=>`<th><span class="tip${ci===last?' edge':''}" data-tip="${esc(col[2])}">${col[1]}</span></th>`).join("")}</tr>`;
+  const body=c.rows.map(r=>{
+    const cells=r.cells.map((cell,ci)=>`<td class="c celltip${ci===last?' edge':''}" data-tip="${esc(cell[1])}"><span class="sym ${cell[0]}">${CAPSYM[cell[0]]}</span></td>`).join("");
+    return `<tr><td><span class="tip" data-tip="${esc(r.tip)}">${r.label}</span> <span class="capref">${r.ref}</span></td>${cells}</tr>`;
+  }).join("");
+  const legend=`<div class="symkey"><span><span class="sym ok">✓</span> mature native path</span><span><span class="sym glue">⚙</span> native-grade — you write platform glue</span><span><span class="sym warn">⚠</span> caveats</span><span style="color:var(--muted)">· hover any cell for detail</span></div>`;
+  return legend+`<div class="matrix"><table><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+}
+function renderFrameworks(){
+  document.getElementById("frameworks-content").innerHTML = XPLAT.intro + XPLAT.dev.replace("{{CAPMATRIX}}", renderCapMatrix());
+}
+
+/* ---------- 6 · Glossary ---------- */
+const GLOSSARY=[
+  ["Native app","Built for one platform with its own SDK and language — Kotlin/Java on Android, Swift on iOS. Full access to device APIs and the secure element; best security and performance, but a separate codebase per platform."],
+  ["Cross-platform native","One shared codebase — Flutter, React Native (usually via Expo), or Kotlin Multiplatform — that builds real native apps for each platform. The §4 sweet spot: one codebase, two store apps, hardware key kept — provided the security-critical signing still runs in native code (§5)."],
+  ["Expo / EAS","The standard toolkit for building React Native apps: managed native modules, plus EAS (Expo Application Services) for cloud builds, store submission and over-the-air JS updates. Custom native code (e.g. the hardware signer) is added via the Expo Modules API and config plugins, so it stays within the cross-platform-native sweet spot."],
+  ["PWA — Progressive Web App","A web app that runs in the browser yet can be installed to the home screen and work offline via a service worker. It uses web APIs only, so signing keys are software-held rather than hardware-isolated — which is why a PWA sits below native on security."],
+  ["Hardware-rooted key","A private key generated and used inside the device's secure hardware and never exported. A valid signature proves the data came from this specific, registered device."],
+  ["Secure element / TEE","Dedicated secure hardware isolated from the operating system — Android's TEE / StrongBox, Apple's Secure Enclave — where the private key lives and signing happens."],
+  ["Android Keystore","Android's system service for hardware-backed key generation, storage and signing."],
+  ["Secure Enclave","Apple's dedicated security coprocessor for key storage and on-device cryptography."],
+  ["Web Crypto API","The browser's cryptography API. Keys are software-protected (no hardware isolation), the root reason a PWA can't match native key security."],
+  ["Biometric auth","Fingerprint or Face ID used to unlock the local session. Kept separate from the signing key, which is deliberately not gated per-signature so background sync isn't blocked."],
+  ["ECDSA · EC P-256","The elliptic-curve digital-signature scheme and curve used to sign each event."],
+  ["spki (SubjectPublicKeyInfo)","A standard binary encoding for a public key — the form the server stores per account."],
+  ["DER","A binary encoding for ASN.1 structures; the signature format the shared server expects."],
+  ["P1363","A fixed-length raw signature encoding (r‖s) produced by Web Crypto. It must be converted to DER before the server will accept it (§3)."],
+  ["Sync queue","The local table of immutable, signed events awaiting upload; drains oldest-first when connectivity returns, and self-heals on transient failure."],
+  ["Offline-first","A design where the app works fully with no network and upload is deferred — the core premise of this proposal."],
+  ["WorkManager","Android's deferred / background job scheduler, with near-guaranteed execution — drives the sync queue on Android."],
+  ["BGTask (BackgroundTasks)","iOS's background-execution framework; best-effort, so background sync on iOS is less guaranteed than on Android."],
+  ["Service Worker","A background script in PWAs enabling offline caching and limited background sync."],
+  ["Background Sync","A web API that defers an action until the device regains connectivity."],
+  ["WebAuthn / passkeys","A web standard for hardware-backed authentication — the nearest web equivalent to a device-bound key."],
+  ["SQLCipher","An encrypted build of SQLite used for the at-rest local store on every platform."],
+  ["expect / actual","Kotlin Multiplatform's mechanism for shared code with platform-specific implementations (e.g. Android Keystore vs iOS Secure Enclave)."],
+  ["Platform channel / native module","The bridge a cross-platform framework uses to call native code — where the signing-key work has to live."]
+];
+function renderGlossary(){
+  document.getElementById("glossary-content").innerHTML =
+    `<p class="sublead">Plain-language definitions for the terms used above — the three delivery options first, then the identity, crypto and sync vocabulary.</p>` +
+    `<dl class="glossary">` + GLOSSARY.map(g=>`<div class="gterm"><dt>${g[0]}</dt><dd>${g[1]}</dd></div>`).join("") + `</dl>`;
+}
+
+/* ---------- TOC + scroll-spy ---------- */
+function renderTOC(){
+  document.getElementById("toc").innerHTML =
+    `<button class="toc-toggle" id="tocToggle" aria-expanded="true" aria-controls="tocLinks" title="Hide contents" onclick="toggleTOC()"><span class="cv-open">▾ Contents</span><span class="cv-closed">☰</span></button>` +
+    `<div class="toc-links" id="tocLinks">` +
+    TOC.map(t=>`<a id="toc-${t[0]}" tabindex="0" onclick="scrollToSec('${t[0]}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToSec('${t[0]}')}"><b>${t[1]}</b><span>${t[2]}</span></a>`).join("") +
+    `</div>`;
+}
+function toggleTOC(){
+  tocOpen=!tocOpen;
+  document.getElementById("toc").classList.toggle("collapsed",!tocOpen);
+  const dw=document.querySelector(".docwrap"); if(dw) dw.classList.toggle("tocco",!tocOpen);
+  const btn=document.getElementById("tocToggle"); btn.setAttribute("aria-expanded",tocOpen); btn.title=tocOpen?"Hide contents":"Show contents";
+}
+function setupSpy(){
+  const obs=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        document.querySelectorAll(".toc a").forEach(a=>a.classList.remove("active"));
+        const lnk=document.getElementById("toc-"+e.target.id);
+        if(lnk) lnk.classList.add("active");
+      }
+    });
+  },{rootMargin:"-45% 0px -50% 0px",threshold:0});
+  TOC.forEach(t=>{ const el=document.getElementById(t[0]); if(el) obs.observe(el); });
+}
+
+/* ---------- platform switch (re-renders the platform-aware sections) ---------- */
+function setPlat(p){
+  plat=p;
+  document.querySelectorAll(".pseg").forEach(b=>b.setAttribute("aria-selected", b.dataset.p===plat));
+  renderOverview(); renderFlows();
+  allOpen=false; document.getElementById("expandBtn").textContent="＋ Expand all detail";
+}
+
+/* ---------- init ---------- */
+renderTOC();
+renderOverview(); renderFlows(); renderDeltas(); renderApproach(); renderFrameworks(); renderGlossary();
+document.querySelectorAll(".pseg").forEach(b=>b.setAttribute("aria-selected", b.dataset.p===plat));
+setupSpy();
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") hideTip(); });
+document.addEventListener("click",e=>{
+  const el=e.target.closest("[data-tip]");
+  if(el){ showTip(el.getAttribute("data-tip")); }
+  else if(!e.target.closest("#tiptoast")){ hideTip(); }
+});
+
+</script>
+</body>
+</html>

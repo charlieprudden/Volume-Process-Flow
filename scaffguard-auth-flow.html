@@ -509,7 +509,7 @@ const PLAT = {
     privClass:"priv soft", privChip:"private key · non-exportable from JS · not hardware", pubChip:"public key · spki DER (base64)",
     privText:"The browser generates an ECDSA P-256 key pair and marks the private key <b>non-exportable</b> — JavaScript can ask it to sign but never read the bytes. It's protected by the browser sandbox + disk encryption, <em>not</em> a hardware secure element, and it's erased if the user clears site data.",
     devLabel:"Web (browser)",
-    stack:"<b>Stack:</b> Web Crypto (ECDSA P-256, software) · WebAuthn passkey + PIN · IndexedDB (+ PIN-derived AES-GCM) · Service Worker + Background Sync (Chromium) · online / offline events",
+    stack:"<b>Stack:</b> browser key store (ECDSA P-256, software) · WebAuthn passkey + PIN · IndexedDB (+ PIN-derived AES-GCM) · Service Worker + Background Sync (Chromium) · online / offline events",
     worker:"syncEngine (SW)",
     triggers:[
       {h:"Background Sync · Chromium",p:"On capture, <code>registration.sync.register('flush-queue')</code>; the SW flushes on reconnect <b>even if the page is closed</b> (+ Periodic Background Sync when installed)."},
@@ -669,7 +669,7 @@ ios:{
     ]}
 },
 web:{
-  registration:{ banner:"<span style='color:var(--web)'><b>PWA design spec.</b></span> Runs in any modern browser; optionally installs to the home screen. The signing key is a software-protected Web Crypto key (not a hardware secure element) — design around that and around storage eviction.",
+  registration:{ banner:"<span style='color:var(--web)'><b>PWA design spec.</b></span> Runs in any modern browser; optionally installs to the home screen. The signing key is a software-protected browser key (not a hardware secure element) — design around that and around storage eviction.",
     summaryClass:"one", summaryNum:"1",
     summaryHtml:"<b>One <code>POST /register</code> call</b> (step 6). If you also enable WebAuthn biometric login, passkey enrolment adds one more round trip. Public key exports as spki for free; the signature delta only bites at capture/sync.",
     steps:[
@@ -680,12 +680,12 @@ web:{
       {n:3,type:"d",txt:"The user enters <b>name, email and phone</b> and taps “Send OTP”. Validated in-page; no network.",code:"src/ui/registration"},
       {n:4,type:"d",delta:true,txt:"On the OTP screen the user enters <span class='t'>123456</span> and chooses a <b>PIN / passphrase</b>.",
         detail:"The PIN is special on web: it isn't stored — it <em>derives</em> the AES key that encrypts local data (§5.1). On native the PIN is stored in a hardware-sealed store; the web has none.",code:"src/auth/pin.js"},
-      {n:5,type:"d",delta:true,txt:"The app <b>generates a non-exportable Web Crypto signing key</b>; optionally it also registers a <b>WebAuthn passkey</b> for biometric login.",
-        detail:"<code>crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'}, false, ['sign','verify'])</code>, stored in IndexedDB. <b>Web reality — two keys:</b> a WebAuthn passkey (hardware-backed, login only) and a Web Crypto key (software, signs event payloads). You can't sign payloads with the passkey.",code:"src/crypto/deviceKey.js · src/auth/webauthn.js"},
+      {n:5,type:"d",delta:true,txt:"The app <b>generates a non-exportable browser signing key</b>; optionally it also registers a <b>WebAuthn passkey</b> for biometric login.",
+        detail:"<code>crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'}, false, ['sign','verify'])</code>, stored in IndexedDB. <b>Web reality — two keys:</b> a WebAuthn passkey (hardware-backed, login only) and a browser signing key (software, signs event payloads). You can't sign payloads with the passkey.",code:"src/keys/deviceKey.js · src/auth/webauthn.js"},
       {n:6,type:"n",tagTxt:"→ Network · request/response",txt:"The app sends its registration package. The public key <b>exports as spki directly</b> — no wrapping needed (better than iOS).",
         detail:"<code>POST /register { userId, publicKey, deviceId, name, email, phone }</code> (+ passkey credential if used). <code>publicKey = crypto.subtle.exportKey('spki', pub)</code>; <code>deviceId</code> = a generated UUID in IndexedDB (no hardware id; resets on data clear).",code:"src/data/eventRepo.js · server.js (shared)"},
       {n:7,type:"d",delta:true,txt:"The app <b>stores token + userId in IndexedDB</b> and derives the local-data encryption key from the PIN.",
-        detail:"PIN-derived AES-GCM via PBKDF2 / Argon2 — the key isn't stored, it's reconstructed at unlock. Token may instead live in an <code>httpOnly</code> cookie (safer vs XSS).",code:"src/data/cryptoStore.js"},
+        detail:"PIN-derived AES-GCM via PBKDF2 / Argon2 — the key isn't stored, it's reconstructed at unlock. Token may instead live in an <code>httpOnly</code> cookie (safer vs XSS).",code:"src/data/secureStore.js"},
       {n:8,type:"d",txt:"<b>Done → Home.</b> Offline-capable thereafter, subject to the web sync limits (see the offline tab).",
         detail:"Call <code>navigator.storage.persist()</code> to reduce the chance the browser evicts the data — eviction wipes keys and forces re-registration.",code:"navigator.storage.persist()"}
     ]},
@@ -696,10 +696,10 @@ web:{
       {n:1,type:"d",delta:true,txt:"Re-registration is <b>triggered</b> by clearing site data, switching browser/device, or the PWA being evicted — all wipe the key.",
         detail:"More frequent than native because browser storage is more volatile (eviction / ITP, especially on iOS).",code:"src/data/idb.js"},
       {n:2,type:"d",txt:"The user <b>re-proves identity</b> (OTP <span class='t'>123456</span>, or WebAuthn) and chooses a PIN / passphrase.",code:"src/auth/*"},
-      {n:3,type:"d",txt:"The app <b>generates a fresh non-exportable Web Crypto key</b> (the old one is gone with the cleared data).",code:"src/crypto/deviceKey.js"},
+      {n:3,type:"d",txt:"The app <b>generates a fresh non-exportable browser key</b> (the old one is gone with the cleared data).",code:"src/keys/deviceKey.js"},
       {n:4,type:"n",tagTxt:"→ Network · request/response",txt:"The app posts the <b>new public key</b>. The server <b>recognises the email</b>, returns the <b>existing</b> user id, marks the new key active, grace-windows the old key.",
         detail:"Same shared, proposed email-keyed server. Verify <code>/sync</code> against any active key so already-queued items still validate.",code:"server.js (shared, proposed)"},
-      {n:5,type:"d",txt:"The app <b>stores the existing user id + new token</b> in IndexedDB and re-derives the encryption key from the PIN.",code:"src/data/cryptoStore.js"},
+      {n:5,type:"d",txt:"The app <b>stores the existing user id + new token</b> in IndexedDB and re-derives the encryption key from the PIN.",code:"src/data/secureStore.js"},
       {n:6,type:"d",txt:"<b>Done — account continuous, key rotated.</b>",
         detail:"Because data clearing is common, the email-continuity design is what keeps the account stable across frequent re-enrolments.",code:"web §10"}
     ]},
@@ -711,7 +711,7 @@ web:{
       {n:3,type:"n",delta:true,branch:"ok",branchTxt:"✓ online path · biometric",tagTxt:"→ Network · WebAuthn challenge",txt:"<b>Biometric login via a WebAuthn passkey</b> — but this <b>needs a server challenge</b>, so it only works online.",
         detail:"<code>POST /webauthn/challenge</code> → <code>navigator.credentials.get({ challenge, userVerification:'required' })</code> → the OS draws Face ID / fingerprint / Windows Hello → the signed assertion is verified server-side. <code>UV:'required'</code> is what makes it biometric.",code:"src/auth/webauthn.js"},
       {n:4,type:"d",delta:true,branch:"fb",branchTxt:"↳ offline path · PIN",txt:"<b>PIN / passphrase unlock</b> — the offline path, and the default when there's no signal.",
-        detail:"The PIN <em>derives</em> (PBKDF2 / Argon2) the AES key that decrypts the local store, so entering it both authenticates <b>and</b> unlocks the data. Better than storing the PIN — the web has no hardware-sealed secret store.",code:"src/auth/pin.js · src/data/cryptoStore.js"},
+        detail:"The PIN <em>derives</em> (PBKDF2 / Argon2) the AES key that decrypts the local store, so entering it both authenticates <b>and</b> unlocks the data. Better than storing the PIN — the web has no hardware-sealed secret store.",code:"src/auth/pin.js · src/data/secureStore.js"},
       {n:5,type:"d",txt:"<b>Authenticated → Home.</b> The offline PIN path contacted no server; the biometric path used the network only for its WebAuthn challenge."}
     ]},
   offline:{ banner:"", summaryClass:"zero", summaryNum:"0",
@@ -720,10 +720,10 @@ web:{
       {phase:"While offline — capture, sign, queue"},
       {n:1,type:"d",txt:"The user types a title + description and taps <b>Capture</b>.",code:"src/data/eventRepo.js"},
       {n:2,type:"d",delta:true,txt:"The event is <b>written to IndexedDB</b>; sensitive fields are <b>encrypted at rest</b> with a PIN-derived key.",
-        detail:"IndexedDB isn't encrypted by default, so encrypt with <b>AES-GCM</b> (Web Crypto) using a key derived from the PIN (not stored, reconstructed at unlock). Call <code>navigator.storage.persist()</code> to resist eviction.",code:"src/data/idb.js · cryptoStore.js"},
+        detail:"IndexedDB isn't encrypted by default, so encrypt with <b>AES-GCM</b> (browser key API) using a key derived from the PIN (not stored, reconstructed at unlock). Call <code>navigator.storage.persist()</code> to resist eviction.",code:"src/data/idb.js · secureStore.js"},
       {n:3,type:"d",txt:"The app <b>freezes the event into one exact JSON string</b> (a deliberately fixed key order).",code:"canonical JSON.stringify"},
-      {n:4,type:"d",tagTxt:"On-device · software key",delta:true,txt:"The app <b>signs the exact bytes with the Web Crypto key</b> — then <b>converts the signature</b>.",
-        detail:"<code>crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'})</code> emits <b>raw IEEE P1363</b> (<code>r‖s</code>, 64 B). Convert to DER (ASN.1) client-side, or set <code>dsaEncoding:'ieee-p1363'</code> server-side. <b>This is the web wire gotcha.</b>",code:"src/crypto/deviceKey.js (p1363ToDer)"},
+      {n:4,type:"d",tagTxt:"On-device · software key",delta:true,txt:"The app <b>signs the exact bytes with the browser key</b> — then <b>converts the signature</b>.",
+        detail:"<code>crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'})</code> emits <b>raw IEEE P1363</b> (<code>r‖s</code>, 64 B). Convert to DER (ASN.1) client-side, or set <code>dsaEncoding:'ieee-p1363'</code> server-side. <b>This is the web wire gotcha.</b>",code:"src/keys/deviceKey.js (p1363ToDer)"},
       {n:5,type:"d",txt:"An <b>immutable signed envelope is enqueued</b> in IndexedDB (<code>SyncQueueItem</code>, PENDING).",code:"sync_queue (IndexedDB)"},
       {n:6,type:"d",txt:"The app <b>asks the Service Worker to sync</b>.",
         detail:"<code>registration.sync.register('flush-queue')</code> on Chromium; elsewhere it waits for an <code>online</code> / foreground trigger.",code:"src/sw.js"},
@@ -754,19 +754,19 @@ const DELTAS = [
   {title:"Device signing key", sev:["break","Web: not hardware"],
     a:"<b>Android Keystore</b> (TEE / StrongBox). Non-exportable, resists local malware.",
     i:"<b>Secure Enclave</b>, P-256 only — exactly what we use. Non-exportable, resists local malware.",
-    w:"<b>Web Crypto</b> key, non-exportable <em>from JS</em> but <b>software-protected</b> (sandbox + disk encryption), <b>not</b> a secure element. Erased on clear-site-data.",
+    w:"<b>Browser-held</b> key, non-exportable <em>from JS</em> but <b>software-protected</b> (sandbox + disk encryption), <b>not</b> a secure element. Erased on clear-site-data.",
     note:"<b>The core security delta.</b> Native keys sit in a tamper-resistant chip; the web key can be <em>used</em> by injected script while the page is open (it can't be exfiltrated, but XSS is the dominant web threat). If a hardware-isolated key is a hard requirement, the web can't meet it. Both native sides share the deliberate choice not to bind the key to biometrics, so background signing works."},
   {title:"Biometric login & fallback", sev:["behav","Behavioural"],
     a:"<code>BiometricPrompt</code>; app owns the PIN fallback; fully offline.",
     i:"<code>LAContext.evaluatePolicy</code>; <code>.deviceOwnerAuthentication</code> can fall back to the <b>device passcode</b>, so the app PIN is optional; fully offline.",
     w:"<b>WebAuthn passkey</b> (hardware-backed) — but it normally needs a <b>server challenge</b>, so biometric login is online-leaning; the <b>PIN is the offline path</b>.",
-    note:"Web also forces a <b>two-key split</b>: the passkey does login assertions only and can't sign event payloads, so a separate software Web Crypto key does the payload signing."},
+    note:"Web also forces a <b>two-key split</b>: the passkey does login assertions only and can't sign event payloads, so a separate software browser key does the payload signing."},
   {title:"Background sync", sev:["behav","Behavioural · biggest"],
     a:"<b>WorkManager</b>: guaranteed deferred execution + a ~15-min periodic backstop + constraint triggers.",
     i:"<b>Best-effort</b>: foreground flush (<code>NWPathMonitor</code>) + background <code>URLSession</code> + <code>BGTaskScheduler</code>. No guaranteed interval.",
     w:"<b>Chromium only</b> (SW Background Sync, even when closed); <b>absent on iOS Safari</b> → foreground-only there.",
     note:"The queue/retry logic is <b>identical</b> everywhere; only the scheduling reliability differs. Worst case (iOS Safari PWA) the queue drains only while the app is open — plan UX for “syncs when you next open it.”"},
-  {title:"Local storage & at-rest crypto", sev:["platform","Platform"],
+  {title:"Local storage & at-rest encryption", sev:["platform","Platform"],
     a:"<code>EncryptedSharedPreferences</code> + <b>Room + SQLCipher</b>, hardware-keyed.",
     i:"<b>Keychain</b> (<code>…ThisDeviceOnly</code>) + <b>SQLCipher via GRDB</b> (or Core Data + Data Protection).",
     w:"<b>IndexedDB</b> — not encrypted by default; <b>DIY AES-GCM</b> with a <b>PIN-derived</b> key (PBKDF2 / Argon2). Can be <b>evicted</b>.",
@@ -808,7 +808,7 @@ const APPROACH = {
      best:"Broad reach, zero-install and update speed outweigh hardware-grade device identity — or a pilot / MVP to validate the workflow before investing in native."},
     {name:"Cross-platform native (Flutter / React Native + Expo / Kotlin Multiplatform)", tag:["same","usual sweet spot"], spot:true,
      pros:["One codebase → both app stores, while still calling native Keystore / Secure Enclave / biometrics / background APIs via plugins → meets both dominant requirements.","Much lower build + maintenance cost than two native apps; near-native UX.","Capacitor can reuse a web UI but add native security plugins — a bridge between PWA and native."],
-     cons:["Plugin/abstraction risk for cutting-edge crypto/security APIs (you may still write a little native glue).","Slightly less control/perf than pure native at the edges; another toolchain.","Still subject to app-store review."],
+     cons:["Plugin/abstraction risk for cutting-edge signing/security APIs (you may still write a little native glue).","Slightly less control/perf than pure native at the edges; another toolchain.","Still subject to app-store review."],
      best:"You want native-grade security + both platforms at a fraction of the two-codebase cost. For ScaffGuard specifically, this is usually the sweet spot."}
   ],
   matrixCols:[
@@ -918,11 +918,11 @@ const XPLAT = {
     </ul>
 
     <div class="sech">How it maps to ScaffGuard's existing flows</div>
-    <p class="xnote" style="font-size:13.5px;color:var(--muted)">Shared code calls something like <code style="font-family:var(--mono);color:var(--net-ink)">deviceKey.sign(bytes)</code>; behind the interface sit the exact classes from the native designs — <code style="font-family:var(--mono);color:var(--net-ink)">KeystoreManager.kt</code> on Android and <code style="font-family:var(--mono);color:var(--net-ink)">SecureEnclaveManager.swift</code> on iOS. The <b>§C crypto contract still applies</b>: ensure the plugin returns a <b>DER signature</b> and an <b>spki public key</b> so the unchanged <code style="font-family:var(--mono);color:var(--net-ink)">server.js</code> verifies it — and prove it with a <code style="font-family:var(--mono);color:var(--net-ink)">test-contract.js</code>-style round-trip <em>on each target</em>.</p>
+    <p class="xnote" style="font-size:13.5px;color:var(--muted)">Shared code calls something like <code style="font-family:var(--mono);color:var(--net-ink)">deviceKey.sign(bytes)</code>; behind the interface sit the exact classes from the native designs — <code style="font-family:var(--mono);color:var(--net-ink)">KeystoreManager.kt</code> on Android and <code style="font-family:var(--mono);color:var(--net-ink)">SecureEnclaveManager.swift</code> on iOS. The <b>§C wire-format contract still applies</b>: ensure the plugin returns a <b>DER signature</b> and an <b>spki public key</b> so the unchanged <code style="font-family:var(--mono);color:var(--net-ink)">server.js</code> verifies it — and prove it with a <code style="font-family:var(--mono);color:var(--net-ink)">test-contract.js</code>-style round-trip <em>on each target</em>.</p>
 
     <div class="sech">Risks &amp; gotchas</div>
     <ul class="keylist">
-      <li><span class="k warn">Plugin risk</span><span>Cutting-edge crypto/security APIs may not have a mature plugin yet — budget for writing thin native glue (Kotlin + Swift) behind a shared interface.</span></li>
+      <li><span class="k warn">Plugin risk</span><span>Cutting-edge signing/security APIs may not have a mature plugin yet — budget for writing thin native glue (Kotlin + Swift) behind a shared interface.</span></li>
       <li><span class="k warn">Edge control</span><span>Slightly less control/perf than pure native at the very edges; one more toolchain to own.</span></li>
       <li><span class="k warn">Store review</span><span>Still subject to App Store / Play Store review — no instant updates (that's the PWA's edge).</span></li>
     </ul>`
@@ -952,7 +952,7 @@ const WHY = {
   "Hardware-rooted signing key":[
     "Android Keystore (TEE / StrongBox) holds a non-exportable key — hardware-isolated.",
     "Secure Enclave holds a non-exportable P-256 key — hardware-isolated.",
-    "Web Crypto keys are software / browser-protected, not in a secure element — the core premise the web can't meet.",
+    "Browser-held keys are software-protected, not in a secure element — the core premise the web can't meet.",
     "Reaches the native Keystore / Secure Enclave via a plugin — same hardware isolation as native."],
   "Biometric auth quality":[
     "BiometricPrompt; works fully offline.",
@@ -1051,7 +1051,7 @@ const XFW = { caps:{
       ["glue","A native module with the right access-control flags — off-the-shelf biometric-signing libs tend to force per-use biometrics, which breaks background sync."],
       ["ok","expect/actual — the Android Keystore code in THIS repo is reused as the Android actual; you write the iOS actual."],
       ["glue","Platform code + .NET bindings to KeyStore / Security (System.Security.Cryptography.ECDsa alone gives a SOFTWARE key)."],
-      ["glue","A native plugin for keygen/sign — otherwise it's a software-protected JS (Web Crypto) key."]]},
+      ["glue","A native plugin for keygen/sign — otherwise it's a software-protected JS (browser) key."]]},
     {label:"B · Biometric login",ref:"§3",tip:"Fingerprint / Face ID to unlock the local session.",cells:[
       ["ok","local_auth"],["ok","biometrics libraries"],["ok","expect/actual"],["ok","Plugin.Fingerprint"],["ok","biometric plugin"]]},
     {label:"C · Encrypted local store",ref:"§5.1",tip:"Encrypted DB + secure secret storage at rest.",cells:[
@@ -1062,7 +1062,7 @@ const XFW = { caps:{
       ["warn","Android: WorkManager ✓. iOS: best-effort (platform limit)."],
       ["warn","Android: ✓ via bindings. iOS: best-effort (platform limit)."],
       ["warn","Better than a pure PWA via a plugin, but iOS still limited."]]},
-    {label:"E · Crypto contract",ref:"§C",tip:"Wire formats the shared server expects: spki public key + DER signature.",cells:[
+    {label:"E · Wire-format contract",ref:"§C",tip:"Wire formats the shared server expects: spki public key + DER signature.",cells:[
       ["ok","Matches native (spki + DER) when you sign in the native channel."],
       ["ok","Matches native (spki + DER) signing in the native module; sign in JS and you inherit P1363→DER + a software key."],
       ["ok","Each side uses its native API → encodings correct per platform."],
@@ -1084,10 +1084,10 @@ XPLAT.dev = XPLAT.dev.replace(`<div class="sech">The main frameworks</div>`,
 `<div class="sech">The golden rule (applies to all five)</div>
 <div class="rulebox"><span class="rl">Non-negotiable</span>
 <p>ScaffGuard's security rests on <b>capabilities, not a language</b>. The design works on any of these frameworks — <b>provided the security-critical operations run in native code</b>.</p>
-<p>The hardware-rooted signing key <b>MUST be generated and signed in native code</b> (Android Keystore / iOS Secure Enclave). Sign in the framework's managed / JS runtime (<code>pointycastle</code>, <code>elliptic</code>/Web Crypto, .NET <code>ECDsa</code>) and the key becomes <b>software-protected</b> — you've quietly rebuilt the <em>web</em> security level, not the native one.</p></div>
+<p>The hardware-rooted signing key <b>MUST be generated and signed in native code</b> (Android Keystore / iOS Secure Enclave). Sign in the framework's managed / JS runtime (<code>pointycastle</code>, <code>elliptic</code> or the browser, .NET <code>ECDsa</code>) and the key becomes <b>software-protected</b> — you've quietly rebuilt the <em>web</em> security level, not the native one.</p></div>
 <ul class="keylist">
   <li><span class="k warn">No per-use biometric</span><span>Reproduce the “key is NOT biometric-gated per signature” decision (design §2.3). Some plugins (e.g. <code style="font-family:var(--mono)">react-native-biometrics</code>) force a biometric prompt on <em>every</em> signature — that breaks background sync. You need a key created with private-key-usage, <b>no biometry</b> — often a small custom native module, not an off-the-shelf plugin.</span></li>
-  <li><span class="k warn">Encoding follows the path</span><span>Sign natively → Android-style <b>spki + DER for free</b>. Sign in JS / Web Crypto (a Capacitor webview) → public key is spki but the <b>signature is P1363 and must be converted to DER</b> (Web design §C).</span></li>
+  <li><span class="k warn">Encoding follows the path</span><span>Sign natively → Android-style <b>spki + DER for free</b>. Sign in JS / browser (a Capacitor webview) → public key is spki but the <b>signature is P1363 and must be converted to DER</b> (Web design §C).</span></li>
   <li><span class="k warn">iOS sync is a platform limit</span><span>No framework gives Android-WorkManager-grade background guarantees on iOS — it's an OS constraint everywhere.</span></li>
 </ul>
 <div class="sech">The main frameworks</div>`);
@@ -1101,35 +1101,35 @@ XPLAT.dev = XPLAT.dev.replace(`<div class="sech">What's shared vs what stays nat
 <div class="fwcard"><div class="fwh"><h3>Flutter</h3><span class="fwlang">Dart</span><span class="fwbest">one polished UI + a thin native shim</span></div><ul class="keylist">
   <li><span class="k">Works?</span><span>Yes — <code style="font-family:var(--mono)">local_auth</code>, <code style="font-family:var(--mono)">flutter_secure_storage</code>, SQLCipher (<code style="font-family:var(--mono)">drift</code>), <code style="font-family:var(--mono)">workmanager</code> all exist.</span></li>
   <li><span class="k warn">Native glue</span><span>The hardware signing key is the gap — no first-class arbitrary-payload Enclave/Keystore signer that also honours the non-biometric-gated policy, so expect a <b>platform channel</b> (a little Kotlin + Swift) for keygen/sign.</span></li>
-  <li><span class="k">Crypto</span><span>Sign in that native channel → spki + DER, matches the server.</span></li></ul></div>
+  <li><span class="k">Encoding</span><span>Sign in that native channel → spki + DER, matches the server.</span></li></ul></div>
 <div class="fwcard"><div class="fwh"><h3>React Native</h3><span class="fwlang">JS / TS</span><span class="fwbest">JS team + biggest ecosystem</span></div><ul class="keylist">
   <li><span class="k">Works?</span><span>Yes — biometrics, <code style="font-family:var(--mono)">react-native-keychain</code>, SQLCipher (<code style="font-family:var(--mono)">op-sqlite</code>), background-fetch / Headless JS.</span></li>
   <li><span class="k warn">Native glue</span><span>A <b>native module</b> for the signing key with the right access-control flags — off-the-shelf biometric-signing libs tend to force per-use biometrics, incompatible with background sync.</span></li>
-  <li><span class="k">Crypto</span><span>Prefer signing in the native module (spki + DER); sign in JS and you inherit the web's P1363→DER + software-key trade-offs.</span></li>
+  <li><span class="k">Encoding</span><span>Prefer signing in the native module (spki + DER); sign in JS and you inherit the web's P1363→DER + software-key trade-offs.</span></li>
   <li><span class="k">Expo</span><span>The usual way to build RN today. Bundles managed native modules + EAS cloud builds / OTA JS updates, and (via the Expo Modules API + config plugins) still lets you ship the custom native signer — so it doesn't change the rules above, just lowers the friction.</span></li></ul></div>
 <div class="fwcard spot"><div class="fwh"><h3>Kotlin Multiplatform</h3><span class="fwlang">Kotlin</span><span class="fwbest">best reuse of this repo</span></div><ul class="keylist">
   <li><span class="k">Works?</span><span>Yes, with the <b>least abstraction</b>. Repositories, sync engine, DTOs and the canonical payload are shared Kotlin; platform specifics use <code style="font-family:var(--mono)">expect/actual</code>.</span></li>
   <li><span class="k warn">Native glue</span><span>The Android <code style="font-family:var(--mono)">KeystoreManager</code>, <code style="font-family:var(--mono)">SecurePrefs</code>, WorkManager and BiometricPrompt code <b>already written here is reused as the Android actual</b>. You write the iOS actuals (Secure Enclave via Kotlin/Native → Security framework, LocalAuthentication, BGTasks) and the iOS UI (SwiftUI, or Compose Multiplatform).</span></li>
-  <li><span class="k">Crypto</span><span>Each side uses its native API → encodings correct per platform.</span></li></ul></div>
+  <li><span class="k">Encoding</span><span>Each side uses its native API → encodings correct per platform.</span></li></ul></div>
 <div class="fwcard"><div class="fwh"><h3>.NET MAUI</h3><span class="fwlang">C#</span><span class="fwbest">a .NET shop</span></div><ul class="keylist">
   <li><span class="k">Works?</span><span>Yes, if you're a .NET shop — Essentials <code style="font-family:var(--mono)">SecureStorage</code>, <code style="font-family:var(--mono)">Plugin.Fingerprint</code>, SQLCipher, background via bindings.</span></li>
   <li><span class="k warn">Native glue</span><span>The hardware signing key uses <b>platform code + .NET bindings</b> to <code style="font-family:var(--mono)">KeyStore</code> / <code style="font-family:var(--mono)">Security</code> — note <code style="font-family:var(--mono)">System.Security.Cryptography.ECDsa</code> alone gives a <b>software</b> key, not hardware.</span></li>
-  <li><span class="k">Crypto</span><span>Via the platform bindings → native encoding.</span></li></ul></div>
+  <li><span class="k">Encoding</span><span>Via the platform bindings → native encoding.</span></li></ul></div>
 <div class="fwcard"><div class="fwh"><h3>Capacitor</h3><span class="fwlang">Web UI + native plugins</span><span class="fwbest">have a web UI, want to harden it</span></div><ul class="keylist">
-  <li><span class="k">Works?</span><span><b>Depends entirely on where you put the crypto.</b> It's the Web design in a WebView, plus native plugins. Keep keygen/sign in webview JS → you have the <b>web</b> security level (software key, P1363→DER). Move them into a <b>native plugin</b> (Keystore/Enclave) → you upgrade that piece to native-grade.</span></li>
+  <li><span class="k">Works?</span><span><b>Depends entirely on where you put the signing.</b> It's the Web design in a WebView, plus native plugins. Keep keygen/sign in webview JS → you have the <b>web</b> security level (software key, P1363→DER). Move them into a <b>native plugin</b> (Keystore/Enclave) → you upgrade that piece to native-grade.</span></li>
   <li><span class="k warn">Native glue</span><span>Secure-storage / biometric / SQLite plugins exist; the <b>arbitrary-payload hardware signer</b> is the one you'll likely build or extend. If you don't, treat it as the PWA design, not the native one.</span></li>
-  <li><span class="k">Crypto</span><span>spki ✓; signature P1363→DER if you sign in JS.</span></li></ul></div>
+  <li><span class="k">Encoding</span><span>spki ✓; signature P1363→DER if you sign in JS.</span></li></ul></div>
 <div class="sech">Do the designs survive cross-platform?</div>
 <ul class="keylist">
   <li><span class="k">Architecture</span><span><b>Yes — unchanged.</b> The repositories, canonical signed payload, sync-queue state machine, status model and server contract are platform-neutral and port directly.</span></li>
   <li><span class="k warn">Security</span><span>Survives <b>only if the key lives in native code</b>. Every framework can do this; the cost is some platform glue — <b>least in KMP</b>, since Android is already written.</span></li>
-  <li><span class="k">Contract</span><span>Still holds for one shared <code style="font-family:var(--mono)">server.js</code> (native → spki + DER; JS / Web Crypto → spki + P1363→DER).</span></li>
+  <li><span class="k">Contract</span><span>Still holds for one shared <code style="font-family:var(--mono)">server.js</code> (native → spki + DER; JS / browser → spki + P1363→DER).</span></li>
   <li><span class="k warn">iOS sync</span><span>Stays best-effort no matter the framework — an OS limitation, not a framework one.</span></li>
 </ul>
 <div class="sech">Which framework when?</div>
 <ul class="keylist">
   <li><span class="k">Reuse this repo</span><span><b>Kotlin Multiplatform</b> — the existing Kotlin becomes the Android side.</span></li>
-  <li><span class="k">One polished UI</span><span><b>Flutter</b> — with a small native crypto shim.</span></li>
+  <li><span class="k">One polished UI</span><span><b>Flutter</b> — with a small native signing shim.</span></li>
   <li><span class="k">JS team</span><span><b>React Native</b> — native widgets + the biggest library pool.</span></li>
   <li><span class="k">.NET shop</span><span><b>.NET MAUI</b> — reuse C# skills.</span></li>
   <li><span class="k">Have a web UI</span><span><b>Capacitor</b> — push the security-critical ops into native plugins.</span></li>
@@ -1338,13 +1338,13 @@ const GLOSSARY=[
   ["Hardware-rooted key","A private key generated and used inside the device's secure hardware and never exported. A valid signature proves the data came from this specific, registered device."],
   ["Secure element / TEE","Dedicated secure hardware isolated from the operating system — Android's TEE / StrongBox, Apple's Secure Enclave — where the private key lives and signing happens."],
   ["Android Keystore","Android's system service for hardware-backed key generation, storage and signing."],
-  ["Secure Enclave","Apple's dedicated security coprocessor for key storage and on-device cryptography."],
-  ["Web Crypto API","The browser's cryptography API. Keys are software-protected (no hardware isolation), the root reason a PWA can't match native key security."],
+  ["Secure Enclave","Apple's dedicated security coprocessor for key storage and on-device signing."],
+  ["Browser key API (software)","The browser's built-in key and signing API. Keys are software-protected with no hardware isolation, which is why a PWA can't match native key security."],
   ["Biometric auth","Fingerprint or Face ID used to unlock the local session. Kept separate from the signing key, which is deliberately not gated per-signature so background sync isn't blocked."],
   ["ECDSA · EC P-256","The elliptic-curve digital-signature scheme and curve used to sign each event."],
   ["spki (SubjectPublicKeyInfo)","A standard binary encoding for a public key — the form the server stores per account."],
   ["DER","A binary encoding for ASN.1 structures; the signature format the shared server expects."],
-  ["P1363","A fixed-length raw signature encoding (r‖s) produced by Web Crypto. It must be converted to DER before the server will accept it (§3)."],
+  ["P1363","A fixed-length raw signature encoding (r‖s) produced by the browser's key API. It must be converted to DER before the server will accept it (§3)."],
   ["Sync queue","The local table of immutable, signed events awaiting upload; drains oldest-first when connectivity returns, and self-heals on transient failure."],
   ["Offline-first","A design where the app works fully with no network and upload is deferred — the core premise of this proposal."],
   ["WorkManager","Android's deferred / background job scheduler, with near-guaranteed execution — drives the sync queue on Android."],
@@ -1358,7 +1358,7 @@ const GLOSSARY=[
 ];
 function renderGlossary(){
   document.getElementById("glossary-content").innerHTML =
-    `<p class="sublead">Plain-language definitions for the terms used above — the three delivery options first, then the identity, crypto and sync vocabulary.</p>` +
+    `<p class="sublead">Plain-language definitions for the terms used above — the three delivery options first, then the identity, signing and sync vocabulary.</p>` +
     `<dl class="glossary">` + GLOSSARY.map(g=>`<div class="gterm"><dt>${g[0]}</dt><dd>${g[1]}</dd></div>`).join("") + `</dl>`;
 }
 

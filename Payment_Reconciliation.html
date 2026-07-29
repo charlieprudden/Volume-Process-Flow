@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commission Reconciliation Platform — Commercial Pricing Proposal | Volume Technology</title>
+<meta name="description" content="Usage-based commercial pricing proposal for the Volume Technology commission reconciliation platform.">
+<meta name="theme-color" content="#0B1220">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231E293B'/%3E%3Cpath d='M35 20 L48 55 L57 55 L44 20 Z' fill='%23fff'/%3E%3Cpath d='M25 32 L36 55 L45 55 L34 32 Z' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --navy: #1E293B;
+    --ink: #0B1220;
+    --accent: #63E5BA;
+    --highlight: #F9BB65;
+    --chrome: rgba(12, 18, 32, 0.82);
+    --hairline: rgba(255, 255, 255, 0.14);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--ink);
+    overflow: hidden;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  @font-face { font-family: 'system'; src: local('Helvetica Neue'); }
+  ::selection { background: oklch(58% 0.13 195 / 0.3); }
+
+  /* ---------- stage: fixed 1920x1080, scaled to fit ---------- */
+  #viewport { position: fixed; inset: 0; display: grid; place-items: center; }
+  #stage {
+    position: relative;
+    width: 1920px; height: 1080px;
+    transform-origin: center center;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.55);
+  }
+  .slide {
+    position: absolute; inset: 0;
+    overflow: hidden;
+    visibility: hidden;
+    opacity: 0;
+  }
+  .slide[data-deck-active] { visibility: visible; opacity: 1; }
+  .slide > section { width: 100%; height: 100%; }
+
+  /* ---------- entrance animations (from the original deck) ---------- */
+  @keyframes dv-up { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes dv-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+  @media (prefers-reduced-motion: no-preference) {
+    [data-deck-active] .an-logo    { animation: dv-in 0.5s ease 0.05s both; }
+    [data-deck-active] .an-eyebrow { animation: dv-up 0.55s cubic-bezier(.16,1,.3,1) both; }
+    [data-deck-active] .an-title   { animation: dv-up 0.65s cubic-bezier(.16,1,.3,1) 0.1s both; }
+    [data-deck-active] .an-body    { animation: dv-up 0.6s cubic-bezier(.16,1,.3,1) 0.2s both; }
+    [data-deck-active] .an-grid > * { animation: dv-up 0.55s cubic-bezier(.16,1,.3,1) both; }
+    [data-deck-active] .an-grid > *:nth-child(1) { animation-delay: 0.24s; }
+    [data-deck-active] .an-grid > *:nth-child(2) { animation-delay: 0.32s; }
+    [data-deck-active] .an-grid > *:nth-child(3) { animation-delay: 0.4s; }
+    [data-deck-active] .an-grid > *:nth-child(4) { animation-delay: 0.48s; }
+    [data-deck-active] .an-grid > *:nth-child(5) { animation-delay: 0.56s; }
+    [data-deck-active] .an-rows > * { animation: dv-up 0.5s cubic-bezier(.16,1,.3,1) both; }
+    [data-deck-active] .an-rows > *:nth-child(1) { animation-delay: 0.18s; }
+    [data-deck-active] .an-rows > *:nth-child(2) { animation-delay: 0.26s; }
+    [data-deck-active] .an-rows > *:nth-child(3) { animation-delay: 0.34s; }
+    [data-deck-active] .an-rows > *:nth-child(4) { animation-delay: 0.42s; }
+    [data-deck-active] .an-rows > *:nth-child(5) { animation-delay: 0.5s; }
+  }
+
+  /* number inputs: hide spinners so the slides stay clean */
+  #stage input[type=number]::-webkit-inner-spin-button,
+  #stage input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  #stage input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+  #stage input:focus-visible { outline: 3px solid var(--highlight); outline-offset: 4px; }
+
+  /* ---------- progress ---------- */
+  #progress {
+    position: fixed; top: 0; left: 0; height: 3px; width: 0;
+    background: var(--accent); z-index: 60;
+    transition: width 0.35s cubic-bezier(.16,1,.3,1);
+  }
+
+  /* ---------- control bar ---------- */
+  #bar {
+    position: fixed; z-index: 70;
+    left: 50%; bottom: 22px; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 10px;
+    background: var(--chrome);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  body.idle #bar { opacity: 0; transform: translateX(-50%) translateY(14px); pointer-events: none; }
+  #bar button {
+    display: grid; place-items: center;
+    width: 34px; height: 34px;
+    border: 0; border-radius: 50%;
+    background: transparent; color: rgba(255,255,255,0.72);
+    cursor: pointer; font: inherit;
+    transition: background 0.15s, color 0.15s;
+  }
+  #bar button:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  #bar button:disabled { opacity: 0.28; cursor: default; background: transparent; }
+  #bar button[aria-pressed=true] { background: var(--accent); color: var(--navy); }
+  #bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #bar svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  #counter {
+    min-width: 74px; text-align: center;
+    font: 500 12.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: 0.08em; color: rgba(255,255,255,0.85);
+    padding: 0 8px; user-select: none;
+  }
+  #counter b { color: #fff; font-weight: 600; }
+  .divider { width: 1px; height: 20px; background: var(--hairline); margin: 0 4px; }
+
+  /* ---------- speaker notes ---------- */
+  #notes {
+    position: fixed; z-index: 65; left: 22px; right: 22px; bottom: 76px;
+    max-width: 760px; margin: 0 auto;
+    padding: 16px 20px;
+    background: var(--chrome);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    color: rgba(255,255,255,0.9);
+    font-size: 14.5px; line-height: 1.55;
+    display: none;
+  }
+  body.notes-on #notes { display: block; }
+  #notes .tag {
+    display: block; margin-bottom: 6px;
+    font: 600 10px/1 ui-monospace, Menlo, monospace;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  /* ---------- overview grid ---------- */
+  #overview {
+    position: fixed; inset: 0; z-index: 90;
+    background: rgba(11, 18, 32, 0.96);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    padding: 40px clamp(20px, 4vw, 64px);
+    overflow-y: auto;
+    display: none;
+  }
+  body.overview-on #overview { display: block; }
+  #overview h2 {
+    font: 600 12px/1 ui-monospace, Menlo, monospace;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: rgba(255,255,255,0.45); margin-bottom: 22px;
+  }
+  #thumbs {
+    display: grid; gap: 22px;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  }
+  .thumb {
+    border: 0; padding: 0; background: none; cursor: pointer;
+    text-align: left; color: inherit; font: inherit;
+    display: flex; flex-direction: column; gap: 9px;
+  }
+  .thumb .frame {
+    position: relative; width: 100%; aspect-ratio: 16 / 9;
+    overflow: hidden; border-radius: 7px;
+    border: 1.5px solid rgba(255,255,255,0.14);
+    background: var(--navy);
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .thumb:hover .frame { border-color: var(--accent); transform: translateY(-2px); }
+  .thumb[aria-current=true] .frame { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,229,186,0.25); }
+  .thumb .frame > .inner {
+    position: absolute; top: 0; left: 0;
+    width: 1920px; height: 1080px;
+    transform-origin: top left;
+    pointer-events: none;
+  }
+  .thumb .cap {
+    display: flex; gap: 9px; align-items: baseline;
+    font-size: 12.5px; color: rgba(255,255,255,0.62);
+  }
+  .thumb .num {
+    font: 600 11px/1 ui-monospace, Menlo, monospace;
+    color: var(--accent);
+  }
+  .thumb:focus-visible .frame { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* ---------- small screens ---------- */
+  #rotate {
+    position: fixed; inset: 0; z-index: 100; display: none;
+    place-items: center; text-align: center;
+    background: var(--ink); color: rgba(255,255,255,0.7);
+    padding: 32px; font-size: 15px; line-height: 1.6;
+  }
+  @media (max-width: 560px) and (orientation: portrait) {
+    #rotate { display: grid; }
+  }
+
+  /* ---------- print / save as PDF ---------- */
+  @media print {
+    @page { size: 1920px 1080px; margin: 0; }
+    body { overflow: visible; background: #fff; }
+    #viewport { position: static; display: block; }
+    #stage { width: 1920px; height: auto; box-shadow: none; transform: none !important; }
+    .slide {
+      position: relative; inset: auto;
+      visibility: visible !important; opacity: 1 !important;
+      width: 1920px; height: 1080px;
+      page-break-after: always; break-after: page;
+    }
+    .slide * { animation: none !important; }
+    #bar, #progress, #notes, #overview, #rotate { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<div id="viewport">
+  <div id="stage">
+<div class="slide" data-index="0"><section data-label="Title" data-screen-label="01" data-speaker-notes="Open by framing this as a straightforward, usage-based pricing proposal for the commission reconciliation platform." style="background: #1E293B; display: flex; flex-direction: column; justify-content: center; padding: 0 160px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: oklch(96% 0.004 260); position: relative;" data-om-slide-id="1df480f9">
+  <img class="an-logo" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjkiIGhlaWdodD0iNzgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIG92ZXJmbG93PSJoaWRkZW4iPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xODggLTM0KSI+PGc+PGc+PGc+PGc+PHBhdGggZD0iTTI0LjE5MzUgNTYuMDE3OCA4Ljc0MzU4IDU2LjAxNzggMTUuNjM3MiA3Ni41MDA4IDM5LjIwNTUgNzYuNTAwOCA2Ny4yMTE4IDI4LjU2NTcgNTcuMTkxMSA2LjIyNDc2ZS0wNSAyNC4xOTM1IDU2LjAxNzhaIiBmaWxsPSIjRkZGRkZGIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGZpbGwtb3BhY2l0eT0iMSIgdHJhbnNmb3JtPSJtYXRyaXgoMS4wMTAyMyAwIDAgMSAxODkgMzUpIj48L3BhdGg+PHBhdGggZD0iTTguNDEwNjQgMzAuMzEzIDAgMzAuMzEzIDYuOTY4OTYgNTAuODE4MiAyMS40MjQ0IDUwLjgxODIgMzMuODc4OCAyOC41OTcyIDIzLjc0ODMgMCA4LjQxMDY0IDMwLjMxM1oiIGZpbGw9IiNGRkZGRkYiIGZpbGwtcnVsZT0ibm9uemVybyIgZmlsbC1vcGFjaXR5PSIxIiB0cmFuc2Zvcm09Im1hdHJpeCgxLjAxMDIzIDAgMCAxIDE4OSAzNSkiPjwvcGF0aD48L2c+PC9nPjwvZz48L2c+PC9nPjwvc3ZnPg==" alt="Volume Technology" style="position: absolute; top: 64px; left: 160px; width: 53px; height: 60px; object-fit: contain;">
+  <div class="an-eyebrow" style="font-size: 24px; letter-spacing: 0.14em; text-transform: uppercase; color: #63E5BA; margin-bottom: 40px;">Commercial Pricing Proposal</div>
+  <h1 class="an-title" style="font-size: 96px; font-weight: 700; margin: 0; line-height: 1.05; max-width: 1300px;">Commission Reconciliation Platform</h1>
+  <div class="an-body" style="display: flex; gap: 100px; margin-top: 80px;">
+    <div>
+      <div style="font-size: 24px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(60% 0.02 260); margin-bottom: 12px;">Prepared for</div>
+      <div style="font-size: 40px; font-weight: 500;">*Customer Name*</div>
+    </div>
+    <div>
+      <div style="font-size: 24px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(60% 0.02 260); margin-bottom: 12px;">Prepared by</div>
+      <div style="font-size: 40px; font-weight: 500;">Volume Technology</div>
+    </div>
+  </div>
+  <div style="position: absolute; bottom: 70px; left: 160px; font-size: 22px; color: oklch(55% 0.02 260);">&lt;Insert Date Here&gt;</div>
+</section></div>
+<div class="slide" data-index="1"><section data-label="The Problem" data-screen-label="03" data-speaker-notes="Set up the pain the client feels today, before introducing the platform." style="background: #E8EAEB; padding: 176px 120px 80px 120px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1E293B; display: flex; flex-direction: column; position: relative;" data-om-slide-id="f8a7e5d8">
+  <img class="an-logo" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjkiIGhlaWdodD0iNzgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIG92ZXJmbG93PSJoaWRkZW4iPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xODggLTM0KSI+PGc+PGc+PGc+PGc+PHBhdGggZD0iTTI0LjE5MzUgNTYuMDE3OCA4Ljc0MzU4IDU2LjAxNzggMTUuNjM3MiA3Ni41MDA4IDM5LjIwNTUgNzYuNTAwOCA2Ny4yMTE4IDI4LjU2NTcgNTcuMTkxMSA2LjIyNDc2ZS0wNSAyNC4xOTM1IDU2LjAxNzhaIiBmaWxsPSIjMUUyMTI2IiBmaWxsLXJ1bGU9Im5vbnplcm8iIGZpbGwtb3BhY2l0eT0iMSIgdHJhbnNmb3JtPSJtYXRyaXgoMS4wMTAyMyAwIDAgMSAxODkgMzUpIj48L3BhdGg+PHBhdGggZD0iTTguNDEwNjQgMzAuMzEzIDAgMzAuMzEzIDYuOTY4OTYgNTAuODE4MiAyMS40MjQ0IDUwLjgxODIgMzMuODc4OCAyOC41OTcyIDIzLjc0ODMgMCA4LjQxMDY0IDMwLjMxM1oiIGZpbGw9IiMxRTIxMjYiIGZpbGwtcnVsZT0ibm9uemVybyIgZmlsbC1vcGFjaXR5PSIxIiB0cmFuc2Zvcm09Im1hdHJpeCgxLjAxMDIzIDAgMCAxIDE4OSAzNSkiPjwvcGF0aD48L2c+PC9nPjwvZz48L2c+PC9nPjwvc3ZnPg==" alt="Volume Technology" style="position: absolute; top: 56px; left: 120px; width: 46px; height: 52px; object-fit: contain;">
+  <div class="an-eyebrow" style="font-size: 24px; letter-spacing: 0.12em; text-transform: uppercase; color: #63E5BA; margin-bottom: 24px;">The Problem</div>
+  <h2 class="an-title" style="font-size: 64px; font-weight: 700; margin: 0 0 56px 0; max-width: 1550px;">Right now, your commission data lives across disconnected spreadsheets</h2>
+  <div class="an-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); gap: 48px 80px; flex: 1;">
+    <div style="border-top: 2px solid #63E5BA; padding-top: 28px;">
+      <div style="font-size: 34px; font-weight: 600; margin-bottom: 16px;">No single view</div>
+      <p style="font-size: 28px; line-height: 1.5; color: oklch(35% 0.01 260); margin: 0;">Data sits across provider statements, sales sheets, and broker records — nobody on the team has the full picture at once.</p>
+    </div>
+    <div style="border-top: 2px solid #63E5BA; padding-top: 28px;">
+      <div style="font-size: 34px; font-weight: 600; margin-bottom: 16px;">Manual reconciliation</div>
+      <p style="font-size: 28px; line-height: 1.5; color: oklch(35% 0.01 260); margin: 0;">Your team spends hours each month cross-referencing spreadsheets by hand, with no record of what's been checked.</p>
+    </div>
+    <div style="border-top: 2px solid #63E5BA; padding-top: 28px;">
+      <div style="font-size: 34px; font-weight: 600; margin-bottom: 16px;">Clawback exposure is invisible</div>
+      <p style="font-size: 28px; line-height: 1.5; color: oklch(35% 0.01 260); margin: 0;">When a policy lapses, that cost is already owed — but it often goes unnoticed until it surfaces months later.</p>
+    </div>
+    <div style="border-top: 2px solid #63E5BA; padding-top: 28px;">
+      <div style="font-size: 34px; font-weight: 600; margin-bottom: 16px;">Rate changes go undetected</div>
+      <p style="font-size: 28px; line-height: 1.5; color: oklch(35% 0.01 260); margin: 0;">Providers adjust commission rates at network milestones, creating variances that are easy to miss.</p>
+    </div>
+  </div>
+</section></div>
+<div class="slide" data-index="2"><section data-label="What The Platform Does" data-screen-label="04" data-speaker-notes="Walk through the four things the engine does automatically, in order." style="background: #1E293B; padding: 176px 120px 80px 120px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: oklch(96% 0.004 260); display: flex; flex-direction: column; position: relative;" data-om-slide-id="1bedafda">
+  <img class="an-logo" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjkiIGhlaWdodD0iNzgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIG92ZXJmbG93PSJoaWRkZW4iPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xODggLTM0KSI+PGc+PGc+PGc+PGc+PHBhdGggZD0iTTI0LjE5MzUgNTYuMDE3OCA4Ljc0MzU4IDU2LjAxNzggMTUuNjM3MiA3Ni41MDA4IDM5LjIwNTUgNzYuNTAwOCA2Ny4yMTE4IDI4LjU2NTcgNTcuMTkxMSA2LjIyNDc2ZS0wNSAyNC4xOTM1IDU2LjAxNzhaIiBmaWxsPSIjRkZGRkZGIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGZpbGwtb3BhY2l0eT0iMSIgdHJhbnNmb3JtPSJtYXRyaXgoMS4wMTAyMyAwIDAgMSAxODkgMzUpIj48L3BhdGg+PHBhdGggZD0iTTguNDEwNjQgMzAuMzEzIDAgMzAuMzEzIDYuOTY4OTYgNTAuODE4MiAyMS40MjQ0IDUwLjgxODIgMzMuODc4OCAyOC41OTcyIDIzLjc0ODMgMCA4LjQxMDY0IDMwLjMxM1oiIGZpbGw9IiNGRkZGRkYiIGZpbGwtcnVsZT0ibm9uemVybyIgZmlsbC1vcGFjaXR5PSIxIiB0cmFuc2Zvcm09Im1hdHJpeCgxLjAxMDIzIDAgMCAxIDE4OSAzNSkiPjwvcGF0aD48L2c+PC9nPjwvZz48L2c+PC9nPjwvc3ZnPg==" alt="Volume Technology" style="position: absolute; top: 56px; left: 120px; width: 46px; height: 52px; object-fit: contain;">
+  <div class="an-eyebrow" style="font-size: 24px; letter-spacing: 0.12em; text-transform: uppercase; color: #63E5BA; margin-bottom: 24px;">What The Platform Does</div>
+  <h2 class="an-title" style="font-size: 64px; font-weight: 700; margin: 0 0 64px 0; max-width: 1600px;">Here's how the platform takes care of it for you</h2>
+  <div class="an-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 48px; flex: 1;">
+    <div>
+      <div style="font-size: 40px; font-weight: 700; color: #63E5BA; margin-bottom: 24px;">01</div>
+      <div style="font-size: 32px; font-weight: 600; margin-bottom: 16px;">Reconcile</div>
+      <p style="font-size: 26px; line-height: 1.5; color: oklch(78% 0.02 260); margin: 0;">We calculate what each policy should earn and check it against what was actually paid — automatically, every time.</p>
+    </div>
+    <div>
+      <div style="font-size: 40px; font-weight: 700; color: #63E5BA; margin-bottom: 24px;">02</div>
+      <div style="font-size: 32px; font-weight: 600; margin-bottom: 16px;">Detect rate changes</div>
+      <p style="font-size: 26px; line-height: 1.5; color: oklch(78% 0.02 260); margin: 0;">We tell you the difference between a genuine underpayment and a scheduled rate change, so you know what's worth chasing.</p>
+    </div>
+    <div>
+      <div style="font-size: 40px; font-weight: 700; color: #63E5BA; margin-bottom: 24px;">03</div>
+      <div style="font-size: 32px; font-weight: 600; margin-bottom: 16px;">Track clawback exposure</div>
+      <p style="font-size: 26px; line-height: 1.5; color: oklch(78% 0.02 260); margin: 0;">Cancelled and not-taken-up policies land on a watchlist, so you always know what's owed and what's already been recovered.</p>
+    </div>
+    <div>
+      <div style="font-size: 40px; font-weight: 700; color: #63E5BA; margin-bottom: 24px;">04</div>
+      <div style="font-size: 32px; font-weight: 600; margin-bottom: 16px;">Generate statements</div>
+      <p style="font-size: 26px; line-height: 1.5; color: oklch(78% 0.02 260); margin: 0;">Clean, branded statements for every broker — produced in one click, ready to send.</p>
+    </div>
+  </div>
+</section></div>
+<div class="slide" data-index="3"><section data-label="Why It Matters" data-screen-label="05" data-speaker-notes="Bring it back to value: what becomes visible, and how quickly this can be live for TMG Legal Direct." style="background: #E8EAEB; padding: 176px 120px 80px 120px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1E293B; display: flex; flex-direction: column; position: relative;" data-om-slide-id="f0a141bf5">
+  <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjkiIGhlaWdodD0iNzgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIG92ZXJmbG93PSJoaWRkZW4iPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xODggLTM0KSI+PGc+PGc+PGc+PGc+PHBhdGggZD0iTTI0LjE5MzUgNTYuMDE3OCA4Ljc0MzU4IDU2LjAxNzggMTUuNjM3MiA3Ni41MDA4IDM5LjIwNTUgNzYuNTAwOCA2Ny4yMTE4IDI4LjU2NTcgNTcuMTkxMSA2LjIyNDc2ZS0wNSAyNC4xOTM1IDU2LjAxNzhaIiBmaWxsPSIjMUUyMTI2IiBmaWxsLXJ1bGU9Im5vbnplcm8iIGZpbGwtb3BhY2l0eT0iMSIgdHJhbnNmb3JtPSJtYXRyaXgoMS4wMTAyMyAwIDAgMSAxODkgMzUpIj48L3BhdGg+PHBhdGggZD0iTTguNDEwNjQgMzAuMzEzIDAgMzAuMzEzIDYuOTY4OTYgNTAuODE4MiAyMS40MjQ0IDUwLjgxODIgMzMuODc4OCAyOC41OTcyIDIzLjc0ODMgMCA4LjQxMDY0IDMwLjMxM1oiIGZpbGw9IiMxRTIxMjYiIGZpbGwtcnVsZT0ibm9uemVybyIgZmlsbC1vcGFjaXR5PSIxIiB0cmFuc2Zvcm09Im1hdHJpeCgxLjAxMDIzIDAgMCAxIDE4OSAzNSkiPjwvcGF0aD48L2c+PC9nPjwvZz48L2c+PC9nPjwvc3ZnPg==" alt="Volume Technology" style="position: absolute; top: 56px; left: 120px; width: 46px; height: 52px; object-fit: contain;">
+  <div class="an-eyebrow" style="font-size: 24px; letter-spacing: 0.12em; text-transform: uppercase; color: #63E5BA; margin-bottom: 24px;">Why It Matters</div>
+  <h2 class="an-title" style="font-size: 64px; font-weight: 700; margin: 0 0 56px 0; max-width: 1600px;">What used to hide in spreadsheets becomes visible on day one</h2>
+  <div class="an-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); gap: 48px 80px; flex: 1;">
+    <div style="border-top: 2px solid #63E5BA; padding-top: 28px;">
+      <div style="font-size: 34px; font-weight: 600; margin-bottom: 16px;">Reconciliation dashboard</div>
+      <p style="font-size: 28px; line-height: 1.5; color: oklch(35% 0.01 260); margin: 0;">See every policy's status at a glance — matched, short-paid, over-paid, or missing.</p>
+    </div>
+    <div style="border-top: 2px solid #63E5BA; padding-top: 28px;">
+      <div style="font-size: 34px; font-weight: 600; margin-bottom: 16px;">Clawback watchlist</div>
+      <p style="font-size: 28px; line-height: 1.5; color: oklch(35% 0.01 260); margin: 0;">Know your total exposure, what's already been recovered, and what's still outstanding.</p>
+    </div>
+    <div style="border-top: 2px solid #63E5BA; padding-top: 28px;">
+      <div style="font-size: 34px; font-weight: 600; margin-bottom: 16px;">Broker statements</div>
+      <p style="font-size: 28px; line-height: 1.5; color: oklch(35% 0.01 260); margin: 0;">Branded statements generated in seconds, in a consistent format every period.</p>
+    </div>
+    <div style="border-top: 2px solid #63E5BA; padding-top: 28px;">
+      <div style="font-size: 34px; font-weight: 600; margin-bottom: 16px;">Deploys in weeks</div>
+      <p style="font-size: 28px; line-height: 1.5; color: oklch(35% 0.01 260); margin: 0;">The platform is already built. Setting it up with your data is a matter of days, not months.</p>
+    </div>
+  </div>
+</section></div>
+<div class="slide" data-index="4"><section data-label="Executive Summary" data-screen-label="02" data-speaker-notes="Explain the model in one breath: pay for what you process, fixed platform fee, no minimums." style="background: #1E293B; padding: 176px 120px 80px 120px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: oklch(96% 0.004 260); display: flex; flex-direction: column; position: relative;" data-om-slide-id="e9dc8f5e">
+  <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjkiIGhlaWdodD0iNzgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIG92ZXJmbG93PSJoaWRkZW4iPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xODggLTM0KSI+PGc+PGc+PGc+PGc+PHBhdGggZD0iTTI0LjE5MzUgNTYuMDE3OCA4Ljc0MzU4IDU2LjAxNzggMTUuNjM3MiA3Ni41MDA4IDM5LjIwNTUgNzYuNTAwOCA2Ny4yMTE4IDI4LjU2NTcgNTcuMTkxMSA2LjIyNDc2ZS0wNSAyNC4xOTM1IDU2LjAxNzhaIiBmaWxsPSIjRkZGRkZGIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGZpbGwtb3BhY2l0eT0iMSIgdHJhbnNmb3JtPSJtYXRyaXgoMS4wMTAyMyAwIDAgMSAxODkgMzUpIj48L3BhdGg+PHBhdGggZD0iTTguNDEwNjQgMzAuMzEzIDAgMzAuMzEzIDYuOTY4OTYgNTAuODE4MiAyMS40MjQ0IDUwLjgxODIgMzMuODc4OCAyOC41OTcyIDIzLjc0ODMgMCA4LjQxMDY0IDMwLjMxM1oiIGZpbGw9IiNGRkZGRkYiIGZpbGwtcnVsZT0ibm9uemVybyIgZmlsbC1vcGFjaXR5PSIxIiB0cmFuc2Zvcm09Im1hdHJpeCgxLjAxMDIzIDAgMCAxIDE4OSAzNSkiPjwvcGF0aD48L2c+PC9nPjwvZz48L2c+PC9nPjwvc3ZnPg==" alt="Volume Technology" style="position: absolute; top: 56px; left: 120px; width: 46px; height: 52px; object-fit: contain;">
+  <div class="an-eyebrow" style="font-size: 24px; letter-spacing: 0.12em; text-transform: uppercase; color: #63E5BA; margin-bottom: 24px;">Executive Summary</div>
+  <h2 class="an-title" style="font-size: 64px; font-weight: 700; margin: 0 0 52px 0; line-height: 1.1; max-width: 1500px;">Simple pricing, aligned to how much you actually use it</h2>
+  <div class="an-body" style="display: flex; gap: 90px; max-width: 1600px;">
+    <p style="font-size: 34px; line-height: 1.5; margin: 0; flex: 1.1; color: oklch(80% 0.02 260);">You pay based on the volume of commission lines processed each period, plus a fixed monthly platform fee of <strong>£1,499</strong> covering hosting and support. There's no minimum volume commitment.</p>
+    <p style="font-size: 34px; line-height: 1.5; margin: 0; flex: 1; color: oklch(80% 0.02 260);">This pricing reflects what we typically see across protection and insurance intermediary networks — payments, renewals, trail, and clawback lines.</p>
+  </div>
+  
+</section></div>
+<div class="slide" data-index="5"><section data-label="Pricing at a Glance" data-screen-label="06" data-speaker-notes="Walk through the four numbers. Clawback lines cost more because of the extra reconciliation work involved." style="background: #E8EAEB; padding: 176px 120px 80px 120px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1E293B; display: flex; flex-direction: column; position: relative;" data-om-slide-id="f976bc5b">
+  <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjkiIGhlaWdodD0iNzgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIG92ZXJmbG93PSJoaWRkZW4iPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xODggLTM0KSI+PGc+PGc+PGc+PGc+PHBhdGggZD0iTTI0LjE5MzUgNTYuMDE3OCA4Ljc0MzU4IDU2LjAxNzggMTUuNjM3MiA3Ni41MDA4IDM5LjIwNTUgNzYuNTAwOCA2Ny4yMTE4IDI4LjU2NTcgNTcuMTkxMSA2LjIyNDc2ZS0wNSAyNC4xOTM1IDU2LjAxNzhaIiBmaWxsPSIjMUUyMTI2IiBmaWxsLXJ1bGU9Im5vbnplcm8iIGZpbGwtb3BhY2l0eT0iMSIgdHJhbnNmb3JtPSJtYXRyaXgoMS4wMTAyMyAwIDAgMSAxODkgMzUpIj48L3BhdGg+PHBhdGggZD0iTTguNDEwNjQgMzAuMzEzIDAgMzAuMzEzIDYuOTY4OTYgNTAuODE4MiAyMS40MjQ0IDUwLjgxODIgMzMuODc4OCAyOC41OTcyIDIzLjc0ODMgMCA4LjQxMDY0IDMwLjMxM1oiIGZpbGw9IiMxRTIxMjYiIGZpbGwtcnVsZT0ibm9uemVybyIgZmlsbC1vcGFjaXR5PSIxIiB0cmFuc2Zvcm09Im1hdHJpeCgxLjAxMDIzIDAgMCAxIDE4OSAzNSkiPjwvcGF0aD48L2c+PC9nPjwvZz48L2c+PC9nPjwvc3ZnPg==" alt="Volume Technology" style="position: absolute; top: 56px; left: 120px; width: 46px; height: 52px; object-fit: contain;">
+  <div class="an-eyebrow" style="font-size: 24px; letter-spacing: 0.12em; text-transform: uppercase; color: #63E5BA; margin-bottom: 24px;">Pricing at a Glance</div>
+  
+  <h2 class="an-title" style="font-size: 64px; font-weight: 700; margin: 0 0 64px 0;">Five numbers, and that's the whole model</h2><div class="an-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 40px; flex: 1;">
+    <div style="border-top: 2px solid #63E5BA; padding-top: 32px;">
+      <div style="display: flex; align-items: baseline; font-size: 56px; font-weight: 700; line-height: 1; color: #F9BB65; width: 316px; height: 117px">£<input type="number" min="0" step="0.01" value="0.49" data-in="payRate" style="width: 267px; font: inherit; color: inherit; background: transparent; border: none; border-bottom: 3px solid #63E5BA; height: 68px"></div>
+      <div style="font-size: 25px; margin-top: 24px; color: oklch(35% 0.01 260); line-height: 1.4;">Per payment line — indemnity &amp; non-indemnity</div>
+    </div>
+    <div style="border-top: 2px solid #63E5BA; padding-top: 32px;">
+      <div style="display: flex; align-items: baseline; font-size: 56px; font-weight: 700; line-height: 1; color: #F9BB65;">£<input type="number" min="0" step="0.01" value="0.15" data-in="renewRate" style="width: 249px; font: inherit; color: inherit; background: transparent; border: none; border-bottom: 3px solid #63E5BA; height: 71px"></div>
+      <div style="font-size: 25px; margin-top: 24px; color: oklch(35% 0.01 260); line-height: 1.4;">Per renewal line processed</div>
+    </div>
+    <div style="border-top: 2px solid #63E5BA; padding-top: 32px;">
+      <div style="display: flex; align-items: baseline; font-size: 56px; font-weight: 700; line-height: 1; color: #F9BB65;">£<input type="number" min="0" step="0.01" value="3.49" data-in="clawRate" style="width: 249px; font: inherit; color: inherit; background: transparent; border: none; border-bottom: 3px solid #63E5BA; height: 68px"></div>
+      <div style="font-size: 25px; margin-top: 24px; color: oklch(35% 0.01 260); line-height: 1.4;">Per clawback line processed</div>
+    </div>
+    <div style="border-top: 2px solid #63E5BA; padding-top: 32px;">
+      <div style="display: flex; align-items: baseline; font-size: 56px; font-weight: 700; line-height: 1; color: #F9BB65;">£<input type="number" min="0" step="1" value="1499" data-in="platformFee" style="width: 257px; font: inherit; color: inherit; background: transparent; border: none; border-bottom: 3px solid #63E5BA; height: 68px"></div>
+      <div style="font-size: 25px; margin-top: 24px; color: oklch(35% 0.01 260); line-height: 1.4;">Monthly platform fee</div>
+    </div>
+    <div style="border-top: 2px solid #63E5BA; padding-top: 32px;">
+      <div style="display: flex; align-items: baseline; font-size: 56px; font-weight: 700; line-height: 1; color: #F9BB65;">£5,000</div>
+      <div style="font-size: 25px; margin-top: 24px; color: oklch(35% 0.01 260); line-height: 1.4;">One-off setup fee to get you live</div>
+    </div>
+  </div>
+</section></div>
+<div class="slide" data-index="6"><section data-label="Annual Cost Summary" data-screen-label="07" data-speaker-notes="This is what your bill would look like based on your volumes — platform fee is fixed, line fees scale with usage." style="background: #1E293B; padding: 176px 120px 80px 120px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: oklch(96% 0.004 260); display: flex; flex-direction: column; position: relative;" data-om-slide-id="a30822b3">
+  <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjkiIGhlaWdodD0iNzgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIG92ZXJmbG93PSJoaWRkZW4iPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xODggLTM0KSI+PGc+PGc+PGc+PGc+PHBhdGggZD0iTTI0LjE5MzUgNTYuMDE3OCA4Ljc0MzU4IDU2LjAxNzggMTUuNjM3MiA3Ni41MDA4IDM5LjIwNTUgNzYuNTAwOCA2Ny4yMTE4IDI4LjU2NTcgNTcuMTkxMSA2LjIyNDc2ZS0wNSAyNC4xOTM1IDU2LjAxNzhaIiBmaWxsPSIjRkZGRkZGIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGZpbGwtb3BhY2l0eT0iMSIgdHJhbnNmb3JtPSJtYXRyaXgoMS4wMTAyMyAwIDAgMSAxODkgMzUpIj48L3BhdGg+PHBhdGggZD0iTTguNDEwNjQgMzAuMzEzIDAgMzAuMzEzIDYuOTY4OTYgNTAuODE4MiAyMS40MjQ0IDUwLjgxODIgMzMuODc4OCAyOC41OTcyIDIzLjc0ODMgMCA4LjQxMDY0IDMwLjMxM1oiIGZpbGw9IiNGRkZGRkYiIGZpbGwtcnVsZT0ibm9uemVybyIgZmlsbC1vcGFjaXR5PSIxIiB0cmFuc2Zvcm09Im1hdHJpeCgxLjAxMDIzIDAgMCAxIDE4OSAzNSkiPjwvcGF0aD48L2c+PC9nPjwvZz48L2c+PC9nPjwvc3ZnPg==" alt="Volume Technology" style="position: absolute; top: 56px; left: 120px; width: 46px; height: 52px; object-fit: contain;">
+  <div class="an-eyebrow" style="font-size: 24px; letter-spacing: 0.12em; text-transform: uppercase; color: #63E5BA; margin-bottom: 24px;">Annual Cost Summary</div>
+  <h2 class="an-title" style="font-size: 64px; font-weight: 700; margin: 0 0 48px 0;">Let's put your numbers in</h2>
+  <p style="font-size: 26px; color: oklch(75% 0.015 260); margin: -20px 0 40px 0;">Adjust the line counts below to see what this looks like for your business.</p>
+  <div class="an-body" style="display: flex; gap: 100px; flex: 1;">
+    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+      <div style="font-size: 28px; color: oklch(75% 0.015 260); margin-bottom: 12px;">Total Annual Cost</div>
+      <div style="font-size: 118px; font-weight: 700; line-height: 1;"><span data-out="total"></span></div>
+      <div style="font-size: 26px; color: oklch(75% 0.015 260); margin-top: 20px;"><span data-out="monthly"></span> / month</div>
+    </div>
+    <div style="flex: 1.3; display: flex; flex-direction: column; justify-content: center; gap: 26px; font-size: 30px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid oklch(40% 0.01 260); padding-bottom: 18px;">
+        <span>Payment lines / month <input type="number" min="0" value="4291" data-in="pay" style="width: 110px; text-align: right; font-size: 28px; font-family: inherit; color: inherit; border: none; border-bottom: 2px solid #63E5BA; background: transparent; padding: 2px;"></span>
+        <span style="font-weight: 600;"><span data-out="payFee"></span></span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid oklch(40% 0.01 260); padding-bottom: 18px;">
+        <span>Clawback lines / month <input type="number" min="0" value="2196" data-in="claw" style="width: 110px; text-align: right; font-size: 28px; font-family: inherit; color: inherit; border: none; border-bottom: 2px solid #63E5BA; background: transparent; padding: 2px;"></span>
+        <span style="font-weight: 600;"><span data-out="clawFee"></span></span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid oklch(40% 0.01 260); padding-bottom: 18px;">
+        <span>Renewal lines / month <input type="number" min="0" value="1000" data-in="renew" style="width: 110px; text-align: right; font-size: 28px; font-family: inherit; color: inherit; border: none; border-bottom: 2px solid #63E5BA; background: transparent; padding: 2px;"></span>
+        <span style="font-weight: 600;"><span data-out="renewFee"></span></span>
+      </div>
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid oklch(40% 0.01 260); padding-bottom: 18px;">
+        <span>Platform fee</span>
+        <span style="font-weight: 600;"><span data-out="platformFeeFmt"></span></span>
+      </div>
+    </div>
+  </div>
+  
+</section></div>
+<div class="slide" data-index="7"><section data-label="Pricing Rationale" data-screen-label="08" data-speaker-notes="Three points: usage-aligned cost, clawback complexity justifies the higher rate, and the platform fee covers infrastructure." style="background: #E8EAEB; padding: 176px 120px 80px 120px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1E293B; display: flex; flex-direction: column; position: relative;" data-om-slide-id="8fc1cc8d">
+  <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjkiIGhlaWdodD0iNzgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIG92ZXJmbG93PSJoaWRkZW4iPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xODggLTM0KSI+PGc+PGc+PGc+PGc+PHBhdGggZD0iTTI0LjE5MzUgNTYuMDE3OCA4Ljc0MzU4IDU2LjAxNzggMTUuNjM3MiA3Ni41MDA4IDM5LjIwNTUgNzYuNTAwOCA2Ny4yMTE4IDI4LjU2NTcgNTcuMTkxMSA2LjIyNDc2ZS0wNSAyNC4xOTM1IDU2LjAxNzhaIiBmaWxsPSIjMUUyMTI2IiBmaWxsLXJ1bGU9Im5vbnplcm8iIGZpbGwtb3BhY2l0eT0iMSIgdHJhbnNmb3JtPSJtYXRyaXgoMS4wMTAyMyAwIDAgMSAxODkgMzUpIj48L3BhdGg+PHBhdGggZD0iTTguNDEwNjQgMzAuMzEzIDAgMzAuMzEzIDYuOTY4OTYgNTAuODE4MiAyMS40MjQ0IDUwLjgxODIgMzMuODc4OCAyOC41OTcyIDIzLjc0ODMgMCA4LjQxMDY0IDMwLjMxM1oiIGZpbGw9IiMxRTIxMjYiIGZpbGwtcnVsZT0ibm9uemVybyIgZmlsbC1vcGFjaXR5PSIxIiB0cmFuc2Zvcm09Im1hdHJpeCgxLjAxMDIzIDAgMCAxIDE4OSAzNSkiPjwvcGF0aD48L2c+PC9nPjwvZz48L2c+PC9nPjwvc3ZnPg==" alt="Volume Technology" style="position: absolute; top: 56px; left: 120px; width: 46px; height: 52px; object-fit: contain;">
+  <div class="an-eyebrow" style="font-size: 24px; letter-spacing: 0.12em; text-transform: uppercase; color: #63E5BA; margin-bottom: 24px;">Pricing Rationale</div>
+  <h2 class="an-title" style="font-size: 64px; font-weight: 700; margin: 0 0 64px 0;">Why we've priced it this way</h2>
+  <div class="an-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 64px; flex: 1;">
+    <div>
+      <div style="font-size: 40px; font-weight: 700; color: #63E5BA; margin-bottom: 24px;">01</div>
+      <div style="font-size: 36px; font-weight: 600; margin-bottom: 20px;">Cost aligns to usage</div>
+      <p style="font-size: 28px; line-height: 1.5; color: oklch(35% 0.01 260); margin: 0;">You're charged only for what's processed — quieter months cost less.</p>
+    </div>
+    <div>
+      <div style="font-size: 40px; font-weight: 700; color: #63E5BA; margin-bottom: 24px;">02</div>
+      <div style="font-size: 36px; font-weight: 600; margin-bottom: 20px;">Clawbacks carry more overhead</div>
+      <p style="font-size: 28px; line-height: 1.5; color: oklch(35% 0.01 260); margin: 0;">Clawbacks take more work to process correctly — that's reflected in the £3.49 rate.</p>
+    </div>
+    <div>
+      <div style="font-size: 40px; font-weight: 700; color: #63E5BA; margin-bottom: 24px;">03</div>
+      <div style="font-size: 36px; font-weight: 600; margin-bottom: 20px;">Platform fee covers infrastructure</div>
+      <p style="font-size: 28px; line-height: 1.5; color: oklch(35% 0.01 260); margin: 0;">Covers hosting, unlimited users on your team, and ongoing support — from day one.</p>
+    </div>
+  </div>
+</section></div>
+<div class="slide" data-index="8"><section data-label="Key Commercial Terms" data-screen-label="09" data-speaker-notes="Cover the operational terms: billing, rate review period, and notice period." style="background: #1E293B; padding: 176px 120px 80px 120px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: oklch(96% 0.004 260); display: flex; flex-direction: column; position: relative;" data-om-slide-id="d81cc480">
+  <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjkiIGhlaWdodD0iNzgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIG92ZXJmbG93PSJoaWRkZW4iPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xODggLTM0KSI+PGc+PGc+PGc+PGc+PHBhdGggZD0iTTI0LjE5MzUgNTYuMDE3OCA4Ljc0MzU4IDU2LjAxNzggMTUuNjM3MiA3Ni41MDA4IDM5LjIwNTUgNzYuNTAwOCA2Ny4yMTE4IDI4LjU2NTcgNTcuMTkxMSA2LjIyNDc2ZS0wNSAyNC4xOTM1IDU2LjAxNzhaIiBmaWxsPSIjRkZGRkZGIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGZpbGwtb3BhY2l0eT0iMSIgdHJhbnNmb3JtPSJtYXRyaXgoMS4wMTAyMyAwIDAgMSAxODkgMzUpIj48L3BhdGg+PHBhdGggZD0iTTguNDEwNjQgMzAuMzEzIDAgMzAuMzEzIDYuOTY4OTYgNTAuODE4MiAyMS40MjQ0IDUwLjgxODIgMzMuODc4OCAyOC41OTcyIDIzLjc0ODMgMCA4LjQxMDY0IDMwLjMxM1oiIGZpbGw9IiNGRkZGRkYiIGZpbGwtcnVsZT0ibm9uemVybyIgZmlsbC1vcGFjaXR5PSIxIiB0cmFuc2Zvcm09Im1hdHJpeCgxLjAxMDIzIDAgMCAxIDE4OSAzNSkiPjwvcGF0aD48L2c+PC9nPjwvZz48L2c+PC9nPjwvc3ZnPg==" alt="Volume Technology" style="position: absolute; top: 56px; left: 120px; width: 46px; height: 52px; object-fit: contain;">
+  <div class="an-eyebrow" style="font-size: 24px; letter-spacing: 0.12em; text-transform: uppercase; color: #63E5BA; margin-bottom: 24px;">Key Commercial Terms</div>
+  <h2 class="an-title" style="font-size: 64px; font-weight: 700; margin: 0 0 56px 0;">Terms of the agreement</h2>
+  <div class="an-rows" style="display: flex; flex-direction: column; flex: 1;">
+    <div style="display: flex; padding: 28px 0; border-bottom: 1px solid oklch(40% 0.01 260);">
+      <div style="width: 440px; font-size: 30px; font-weight: 600;">Payment schedule</div>
+      <div style="flex: 1; font-size: 30px; line-height: 1.45; color: oklch(80% 0.02 260);">Line fees billed monthly in arrears. Platform fee of £1,499/month billed from day one.</div>
+    </div>
+    <div style="display: flex; padding: 28px 0; border-bottom: 1px solid oklch(40% 0.01 260);">
+      <div style="width: 440px; font-size: 30px; font-weight: 600;">Rate review</div>
+      <div style="flex: 1; font-size: 30px; line-height: 1.45; color: oklch(80% 0.02 260);">Rates fixed for the initial 24-month term, subject to mutual agreement on renewal.</div>
+    </div>
+    <div style="display: flex; padding: 28px 0; border-bottom: 1px solid oklch(40% 0.01 260);">
+      <div style="width: 440px; font-size: 30px; font-weight: 600;">Invoicing</div>
+      <div style="flex: 1; font-size: 30px; line-height: 1.45; color: oklch(80% 0.02 260);">Monthly statement detailing line counts by type and source.</div>
+    </div>
+    <div style="display: flex; padding: 28px 0; border-bottom: 1px solid oklch(40% 0.01 260);">
+      <div style="width: 440px; font-size: 30px; font-weight: 600;">New providers</div>
+      <div style="flex: 1; font-size: 30px; line-height: 1.45; color: oklch(80% 0.02 260);">£499 setup fee for any new provider you add after we go live.</div>
+    </div>
+    <div style="display: flex; padding: 28px 0;">
+      <div style="width: 440px; font-size: 30px; font-weight: 600;">Notice period</div>
+      <div style="flex: 1; font-size: 30px; line-height: 1.45; color: oklch(80% 0.02 260);">Either party may terminate with 90 days' written notice after the initial 24-month term.</div>
+    </div>
+  </div>
+</section></div>
+<div class="slide" data-index="9"><section data-label="Next Steps" data-screen-label="10" data-speaker-notes="Close by inviting confirmation and outlining the next step: signing off and scheduling the kickoff call." style="background: #E8EAEB; display: flex; flex-direction: column; justify-content: center; padding: 0 160px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1E293B; position: relative;" data-om-slide-id="297cc509">
+  <img class="an-logo" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjkiIGhlaWdodD0iNzgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIG92ZXJmbG93PSJoaWRkZW4iPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xODggLTM0KSI+PGc+PGc+PGc+PGc+PHBhdGggZD0iTTI0LjE5MzUgNTYuMDE3OCA4Ljc0MzU4IDU2LjAxNzggMTUuNjM3MiA3Ni41MDA4IDM5LjIwNTUgNzYuNTAwOCA2Ny4yMTE4IDI4LjU2NTcgNTcuMTkxMSA2LjIyNDc2ZS0wNSAyNC4xOTM1IDU2LjAxNzhaIiBmaWxsPSIjMUUyMTI2IiBmaWxsLXJ1bGU9Im5vbnplcm8iIGZpbGwtb3BhY2l0eT0iMSIgdHJhbnNmb3JtPSJtYXRyaXgoMS4wMTAyMyAwIDAgMSAxODkgMzUpIj48L3BhdGg+PHBhdGggZD0iTTguNDEwNjQgMzAuMzEzIDAgMzAuMzEzIDYuOTY4OTYgNTAuODE4MiAyMS40MjQ0IDUwLjgxODIgMzMuODc4OCAyOC41OTcyIDIzLjc0ODMgMCA4LjQxMDY0IDMwLjMxM1oiIGZpbGw9IiMxRTIxMjYiIGZpbGwtcnVsZT0ibm9uemVybyIgZmlsbC1vcGFjaXR5PSIxIiB0cmFuc2Zvcm09Im1hdHJpeCgxLjAxMDIzIDAgMCAxIDE4OSAzNSkiPjwvcGF0aD48L2c+PC9nPjwvZz48L2c+PC9nPjwvc3ZnPg==" alt="Volume Technology" style="position: absolute; top: 64px; left: 160px; width: 53px; height: 60px; object-fit: contain;">
+  <div class="an-eyebrow" style="font-size: 24px; letter-spacing: 0.14em; text-transform: uppercase; color: #63E5BA; margin-bottom: 40px;">Next Steps</div>
+  <h2 class="an-title" style="font-size: 76px; font-weight: 700; margin: 0 0 56px 0; line-height: 1.1; max-width: 1400px;">Let's confirm terms and get you started</h2><div class="an-body" style="display: flex; gap: 100px;">
+    <div>
+      <div style="font-size: 24px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(45% 0.015 260); margin-bottom: 12px;">Contact</div><div style="font-size: 36px; font-weight: 500; width: 630px; height: 254px">Rory Andrews<br>E: rory@volumetechnology.co.uk<br>T: 07805 198 537</div>
+      
+    </div><div>
+      <div style="font-size: 24px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(45% 0.015 260); margin-bottom: 12px;">Proposal valid</div>
+      <div style="font-size: 36px; font-weight: 500;">30 days from &lt;Insert Date Here&gt;</div>
+    </div>
+    
+  </div>
+  
+  
+</section></div>
+  </div>
+</div>
+
+<div id="notes" role="status" aria-live="polite"><span class="tag">Speaker notes</span><span id="notes-text"></span></div>
+
+<nav id="bar" aria-label="Deck controls">
+  <button id="prev" title="Previous slide (←)" aria-label="Previous slide">
+    <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+  </button>
+  <div id="counter" aria-live="polite"><b>1</b> / 10</div>
+  <button id="next" title="Next slide (→)" aria-label="Next slide">
+    <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+  </button>
+  <span class="divider"></span>
+  <button id="grid" title="All slides (G)" aria-label="Show all slides" aria-pressed="false">
+    <svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/></svg>
+  </button>
+  <button id="notesBtn" title="Speaker notes (N)" aria-label="Toggle speaker notes" aria-pressed="false">
+    <svg viewBox="0 0 24 24"><path d="M5 4h14v16l-4.5-3H5z"/><path d="M8.5 9h7M8.5 12.5h4"/></svg>
+  </button>
+  <button id="full" title="Full screen (F)" aria-label="Toggle full screen">
+    <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+  </button>
+</nav>
+
+<div id="overview" aria-label="All slides">
+  <h2>All slides</h2>
+  <div id="thumbs"></div>
+</div>
+
+<div id="rotate">Turn your phone sideways to view the deck.</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var META = [{"label": "Title", "notes": "Open by framing this as a straightforward, usage-based pricing proposal for the commission reconciliation platform."}, {"label": "The Problem", "notes": "Set up the pain the client feels today, before introducing the platform."}, {"label": "What The Platform Does", "notes": "Walk through the four things the engine does automatically, in order."}, {"label": "Why It Matters", "notes": "Bring it back to value: what becomes visible, and how quickly this can be live for TMG Legal Direct."}, {"label": "Executive Summary", "notes": "Explain the model in one breath: pay for what you process, fixed platform fee, no minimums."}, {"label": "Pricing at a Glance", "notes": "Walk through the four numbers. Clawback lines cost more because of the extra reconciliation work involved."}, {"label": "Annual Cost Summary", "notes": "This is what your bill would look like based on your volumes — platform fee is fixed, line fees scale with usage."}, {"label": "Pricing Rationale", "notes": "Three points: usage-aligned cost, clawback complexity justifies the higher rate, and the platform fee covers infrastructure."}, {"label": "Key Commercial Terms", "notes": "Cover the operational terms: billing, rate review period, and notice period."}, {"label": "Next Steps", "notes": "Close by inviting confirmation and outlining the next step: signing off and scheduling the kickoff call."}];
+  var slides = Array.prototype.slice.call(document.querySelectorAll('#stage .slide'));
+  var N = slides.length;
+  var current = 0;
+
+  var stage = document.getElementById('stage');
+  var counter = document.getElementById('counter');
+  var progress = document.getElementById('progress');
+  var notesText = document.getElementById('notes-text');
+  var prevBtn = document.getElementById('prev');
+  var nextBtn = document.getElementById('next');
+  var gridBtn = document.getElementById('grid');
+  var notesBtn = document.getElementById('notesBtn');
+  var fullBtn = document.getElementById('full');
+
+  /* ---------------- fit the 1920x1080 stage to the window ---------------- */
+  function fit() {
+    var pad = 0.965;                                  // small breathing room
+    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080) * pad;
+    stage.style.transform = 'scale(' + s + ')';
+    document.querySelectorAll('#thumbs .inner').forEach(function (el) {
+      el.style.transform = 'scale(' + (el.parentNode.clientWidth / 1920) + ')';
+    });
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', function () { setTimeout(fit, 120); });
+
+  /* ---------------- pricing calculator ---------------- */
+  var state = { pay: 4291, claw: 2196, renew: 1000,
+                payRate: 0.49, renewRate: 0.15, clawRate: 3.49, platformFee: 1499 };
+
+  function fmt(n) {
+    return '\u00A3' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function recalc() {
+    var payFee   = state.pay   * 12 * state.payRate;
+    var clawFee  = state.claw  * 12 * state.clawRate;
+    var renewFee = state.renew * 12 * state.renewRate;
+    var platform = state.platformFee * 12;
+    var total    = payFee + clawFee + renewFee + platform;
+    var out = {
+      payFee: fmt(payFee), clawFee: fmt(clawFee), renewFee: fmt(renewFee),
+      platformFeeFmt: fmt(platform), total: fmt(total), monthly: fmt(total / 12)
+    };
+    document.querySelectorAll('[data-out]').forEach(function (el) {
+      var k = el.getAttribute('data-out');
+      if (out[k] !== undefined) el.textContent = out[k];
+    });
+  }
+
+  document.querySelectorAll('#stage input[data-in]').forEach(function (input) {
+    var key = input.getAttribute('data-in');
+    var isRate = /Rate$|^platformFee$/.test(key);
+    input.addEventListener('input', function () {
+      var v = isRate ? parseFloat(input.value) : parseInt(input.value, 10);
+      state[key] = Math.max(0, isNaN(v) ? 0 : v);
+      recalc();
+    });
+    // keep arrow-key navigation from firing while typing in a field
+    input.addEventListener('keydown', function (e) { e.stopPropagation(); });
+  });
+  recalc();
+
+  /* ---------------- navigation ---------------- */
+  function show(i, updateHash) {
+    i = Math.max(0, Math.min(N - 1, i));
+    current = i;
+    slides.forEach(function (el, idx) {
+      if (idx === i) el.setAttribute('data-deck-active', '');
+      else el.removeAttribute('data-deck-active');
+    });
+    counter.innerHTML = '<b>' + (i + 1) + '</b> / ' + N;
+    progress.style.width = ((i + 1) / N * 100) + '%';
+    notesText.textContent = META[i].notes || 'No notes for this slide.';
+    prevBtn.disabled = (i === 0);
+    nextBtn.disabled = (i === N - 1);
+    document.querySelectorAll('#thumbs .thumb').forEach(function (t, idx) {
+      t.setAttribute('aria-current', idx === i ? 'true' : 'false');
+    });
+    if (updateHash !== false) {
+      history.replaceState(null, '', '#' + (i + 1));
+    }
+  }
+
+  function go(delta) { show(current + delta); }
+
+  prevBtn.addEventListener('click', function () { go(-1); });
+  nextBtn.addEventListener('click', function () { go(1); });
+
+  /* ---------------- overview grid ---------------- */
+  var thumbs = document.getElementById('thumbs');
+  slides.forEach(function (slide, i) {
+    var btn = document.createElement('button');
+    btn.className = 'thumb';
+    btn.type = 'button';
+    var frame = document.createElement('div');
+    frame.className = 'frame';
+    var inner = document.createElement('div');
+    inner.className = 'inner';
+    inner.innerHTML = slide.innerHTML;
+    inner.querySelectorAll('input').forEach(function (el) { el.setAttribute('tabindex', '-1'); });
+    frame.appendChild(inner);
+    var cap = document.createElement('div');
+    cap.className = 'cap';
+    cap.innerHTML = '<span class="num">' + String(i + 1).padStart(2, '0') + '</span><span>' +
+                    META[i].label.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span>';
+    btn.appendChild(frame);
+    btn.appendChild(cap);
+    btn.addEventListener('click', function () { setOverview(false); show(i); });
+    thumbs.appendChild(btn);
+  });
+
+  function setOverview(on) {
+    document.body.classList.toggle('overview-on', on);
+    gridBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (on) fit();
+  }
+  gridBtn.addEventListener('click', function () {
+    setOverview(!document.body.classList.contains('overview-on'));
+  });
+
+  /* ---------------- notes + full screen ---------------- */
+  notesBtn.addEventListener('click', function () {
+    var on = !document.body.classList.contains('notes-on');
+    document.body.classList.toggle('notes-on', on);
+    notesBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+
+  fullBtn.addEventListener('click', function () {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+  });
+
+  /* ---------------- keyboard ---------------- */
+  document.addEventListener('keydown', function (e) {
+    var k = e.key;
+    if (k === 'Escape') {
+      if (document.body.classList.contains('overview-on')) { setOverview(false); e.preventDefault(); }
+      return;
+    }
+    if (k === 'ArrowRight' || k === 'PageDown' || k === ' ' || k === 'Enter') { go(1); e.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { go(-1); e.preventDefault(); }
+    else if (k === 'Home') { show(0); e.preventDefault(); }
+    else if (k === 'End') { show(N - 1); e.preventDefault(); }
+    else if (k === 'g' || k === 'G' || k === 'o' || k === 'O') { setOverview(!document.body.classList.contains('overview-on')); e.preventDefault(); }
+    else if (k === 'n' || k === 'N' || k === 's' || k === 'S') { notesBtn.click(); e.preventDefault(); }
+    else if (k === 'f' || k === 'F') { fullBtn.click(); e.preventDefault(); }
+    else if (/^[1-9]$/.test(k)) { show(parseInt(k, 10) - 1); e.preventDefault(); }
+    else if (k === '0') { show(9); e.preventDefault(); }
+  });
+
+  /* ---------------- touch swipe ---------------- */
+  var tx = 0, ty = 0;
+  document.addEventListener('touchstart', function (e) {
+    tx = e.changedTouches[0].clientX; ty = e.changedTouches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    if (document.body.classList.contains('overview-on')) return;
+    var dx = e.changedTouches[0].clientX - tx;
+    var dy = e.changedTouches[0].clientY - ty;
+    if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? 1 : -1);
+  }, { passive: true });
+
+  /* ---------------- auto-hide the control bar ---------------- */
+  var idleTimer;
+  function wake() {
+    document.body.classList.remove('idle');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () {
+      if (!document.body.classList.contains('overview-on')) document.body.classList.add('idle');
+    }, 3200);
+  }
+  ['mousemove', 'mousedown', 'keydown', 'touchstart', 'wheel'].forEach(function (ev) {
+    document.addEventListener(ev, wake, { passive: true });
+  });
+  wake();
+
+  /* ---------------- deep link (#3 opens slide 3) ---------------- */
+  function fromHash() {
+    var n = parseInt((location.hash || '').replace('#', ''), 10);
+    return (n >= 1 && n <= N) ? n - 1 : 0;
+  }
+  window.addEventListener('hashchange', function () { show(fromHash(), false); });
+
+  fit();
+  show(fromHash(), false);
+})();
+</script>
+</body>
+</html>

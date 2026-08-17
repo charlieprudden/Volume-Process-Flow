@@ -153,6 +153,11 @@
   .write-note{margin-top:9px;padding-top:8px;border-top:1px solid var(--blue-line);font-size:11.5px;color:var(--ink-2)}
   .selbar{display:flex;align-items:center;gap:10px;background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12.5px;color:var(--blue)}
   .selbar b{color:var(--ink)}
+  .keystrip{display:flex;align-items:center;gap:18px;background:#fbfcfe;border:1px solid var(--line);border-radius:8px;padding:9px 14px;margin-bottom:12px;flex-wrap:wrap}
+  .keystrip .kk{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .keystrip .kv{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:7px}
+  .keystrip .kv em{font-style:normal;font-size:11.5px;font-weight:500;color:var(--ink-3)}
+  .chdiff{text-decoration:none;background:#fee4e2;color:#b42318;border-radius:3px;padding:0 1px;font-weight:700}
   .rail-foot{padding:13px 16px;border-top:1px solid var(--line-soft);display:flex;gap:8px}
   .btn{flex:1;border-radius:7px;padding:9px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink-2)}
   .btn:hover{border-color:#c3cbd9}
@@ -255,7 +260,7 @@
       <div class="panel" data-p="potential">
         <div class="screen-note"><b>What this tab is for.</b> Every candidate the matcher recorded. Today the workflow writes one row for <b>every</b> unlinked expected transaction from this lender, so this is the payer-tier set — so every row would currently read <b>Payer only</b>. The type column uses the three options already declared on the object.</div>
         <div class="toolbar">
-          <input class="ctl-in" placeholder="Filter by claim, reference or agreement…">
+          <input class="ctl-in" placeholder="Filter by payee, reference or amount…">
           <button class="ctl act">All types</button>
           <button class="ctl">Payer and reference</button>
           <button class="ctl">Payer and amount</button>
@@ -263,12 +268,13 @@
           <div class="spacer"></div>
           <span class="hint">9 candidates</span>
         </div>
+        <div id="keys-pot"></div>
         <div id="selbar-pot"></div>
         <div class="card">
           <table>
             <thead><tr>
-              <th style="width:34px"></th><th>Claim</th><th>Claimant</th><th>Expected amount</th>
-              <th>Difference</th><th>Reference</th><th>Source</th><th>Type</th>
+              <th style="width:34px"></th><th>Reference</th><th>Expected amount</th><th>Difference</th>
+              <th>Payer</th><th>Payee</th><th>Level</th><th>Type</th>
             </tr></thead>
             <tbody id="pot-rows"></tbody>
           </table>
@@ -279,19 +285,21 @@
       <div class="panel" data-p="pool">
         <div class="screen-note"><b>What this tab is for.</b> Every unlinked expected transaction, not just the shortlist. Use it when the right one didn't make the candidate list — for example when the amount differs by more than 5%.</div>
         <div class="toolbar">
-          <input class="ctl-in" placeholder="Search claim, claimant, reference…">
+          <input class="ctl-in" placeholder="Search payee, reference or amount…">
           <button class="ctl act">Same lender</button>
           <button class="ctl">Any lender</button>
           <button class="ctl">Unparented only</button>
+          <button class="ctl">Parents only</button>
           <div class="spacer"></div>
           <span class="hint">9 of 214 shown</span>
         </div>
+        <div id="keys-pool"></div>
         <div id="selbar-pool"></div>
         <div class="card">
           <table>
             <thead><tr>
-              <th style="width:34px"></th><th>Claim</th><th>Claimant</th><th>Lender</th>
-              <th>Expected amount</th><th>Difference</th><th>Reference</th><th>Raised</th>
+              <th style="width:34px"></th><th>Reference</th><th>Expected amount</th><th>Difference</th>
+              <th>Payer</th><th>Payee</th><th>Level</th><th>Raised</th>
             </tr></thead>
             <tbody id="pool-rows"></tbody>
           </table>
@@ -371,15 +379,15 @@ const txns = [
 ];
 
 const potential = [
-  {id:'e1', claim:'CLM-40218', name:'S. Whitmore', amt:456.86, ref:'3323532', src:'Payment advice', type:'payer_and_reference'},
-  {id:'e2', claim:'CLM-39877', name:'R. Adeyemi', amt:456.86, ref:'3323601', src:'Payment advice', type:'payer_and_reference'},
-  {id:'e3', claim:'CLM-41002', name:'J. Nowak', amt:452.10, ref:'—', src:'Offer acceptance', type:'payer_and_amount'},
-  {id:'e4', claim:'CLM-40560', name:'H. Bakshi', amt:461.00, ref:'—', src:'Offer acceptance', type:'payer_and_amount'},
-  {id:'e5', claim:'CLM-40771', name:'D. Okonjo', amt:398.20, ref:'3323544', src:'Payment advice', type:'payer_only'},
-  {id:'e6', claim:'CLM-39220', name:'L. Pritchard', amt:520.00, ref:'—', src:'Offer acceptance', type:'payer_only'},
-  {id:'e7', claim:'CLM-41188', name:'M. Farrow', amt:456.86, ref:'—', src:'Offer acceptance', type:'payer_and_amount'},
-  {id:'e8', claim:'CLM-40033', name:'A. Siddiqui', amt:1204.77, ref:'3323998', src:'Payment advice', type:'payer_only'},
-  {id:'e9', claim:'CLM-40904', name:'T. Greaves', amt:333.15, ref:'—', src:'Offer acceptance', type:'payer_only'},
+  {id:'e1', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:456.86, ref:'3323532', src:'Payment advice', level:'Child', type:'payer_and_reference'},
+  {id:'e2', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:456.86, ref:'3323522', src:'Payment advice', level:'Child', type:'payer_and_reference'},
+  {id:'e3', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:507.62, ref:'3323540', src:'Payment advice', level:'Child', type:'payer_only'},
+  {id:'e4', payer:'Black Horse Limited', payee:'M. Kaur',               amt:461.00, ref:'—',       src:'Offer acceptance', level:'Unparented', type:'payer_and_amount'},
+  {id:'e5', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:398.20, ref:'3323544', src:'Payment advice', level:'Child', type:'payer_only'},
+  {id:'e6', payer:'Black Horse Limited', payee:'—',                     amt:520.00, ref:'—',       src:'Offer acceptance', level:'Unparented', type:'payer_only'},
+  {id:'e7', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:456.86, ref:'—',       src:'Offer acceptance', level:'Unparented', type:'payer_and_amount'},
+  {id:'e8', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:1204.77,ref:'3323998', src:'Payment advice', level:'Parent', type:'payer_only'},
+  {id:'e9', payer:'Black Horse Limited', payee:'—',                     amt:333.15, ref:'—',       src:'Offer acceptance', level:'Unparented', type:'payer_only'},
 ];
 // potential_matches.type — declared options on the object
 const typeTag = {
@@ -389,16 +397,49 @@ const typeTag = {
 };
 
 const pool = [
-  {id:'e1', claim:'CLM-40218', name:'S. Whitmore', lender:'Black Horse Limited', amt:456.86, ref:'3323532', raised:'11 Aug 2026'},
-  {id:'e2', claim:'CLM-39877', name:'R. Adeyemi', lender:'Black Horse Limited', amt:456.86, ref:'3323601', raised:'11 Aug 2026'},
-  {id:'e3', claim:'CLM-41002', name:'J. Nowak', lender:'Black Horse Limited', amt:452.10, ref:'—', raised:'09 Aug 2026'},
-  {id:'e4', claim:'CLM-40560', name:'H. Bakshi', lender:'Black Horse Limited', amt:461.00, ref:'—', raised:'08 Aug 2026'},
-  {id:'e5', claim:'CLM-40771', name:'D. Okonjo', lender:'Black Horse Limited', amt:398.20, ref:'3323544', raised:'08 Aug 2026'},
-  {id:'e6', claim:'CLM-39220', name:'L. Pritchard', lender:'Black Horse Limited', amt:520.00, ref:'—', raised:'07 Aug 2026'},
-  {id:'e7', claim:'CLM-41188', name:'M. Farrow', lender:'Black Horse Limited', amt:456.86, ref:'—', raised:'06 Aug 2026'},
-  {id:'e8', claim:'CLM-40033', name:'A. Siddiqui', lender:'Black Horse Limited', amt:1204.77, ref:'3323998', raised:'05 Aug 2026'},
-  {id:'e9', claim:'CLM-40904', name:'T. Greaves', lender:'Black Horse Limited', amt:333.15, ref:'—', raised:'04 Aug 2026'},
+  {id:'e1', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:456.86, ref:'3323532', level:'Child', raised:'11 Aug 2026'},
+  {id:'e2', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:456.86, ref:'3323522', level:'Child', raised:'11 Aug 2026'},
+  {id:'e3', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:507.62, ref:'3323540', level:'Child', raised:'09 Aug 2026'},
+  {id:'e4', payer:'Black Horse Limited', payee:'M. Kaur',               amt:461.00, ref:'—',       level:'Unparented', raised:'08 Aug 2026'},
+  {id:'e5', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:398.20, ref:'3323544', level:'Child', raised:'08 Aug 2026'},
+  {id:'e6', payer:'Black Horse Limited', payee:'—',                     amt:520.00, ref:'—',       level:'Unparented', raised:'07 Aug 2026'},
+  {id:'e7', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:456.86, ref:'—',       level:'Unparented', raised:'06 Aug 2026'},
+  {id:'e8', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:1204.77,ref:'3323998', level:'Parent', raised:'05 Aug 2026'},
+  {id:'e9', payer:'Black Horse Limited', payee:'—',                     amt:333.15, ref:'—',       level:'Unparented', raised:'04 Aug 2026'},
 ];
+const levelTag = {
+  'Parent':     '<span class="tag b">Parent</span>',
+  'Child':      '<span class="tag n">Child</span>',
+  'Unparented': '<span class="tag a">Unparented</span>'
+};
+
+function refCompare(candRef, txnRef){
+  if(candRef==='—' || txnRef==='—') return {cls:'n', label:'Not set', detail:''};
+  if(candRef===txnRef)              return {cls:'g', label:'Exact', detail:''};
+  if(candRef.length===txnRef.length){
+    let diffs=[], html='';
+    for(let i=0;i<candRef.length;i++){
+      const same = candRef[i]===txnRef[i];
+      if(!same) diffs.push(i);
+      html += same ? candRef[i] : '<u class="chdiff">'+candRef[i]+'</u>';
+    }
+    if(diffs.length<=2) return {cls:'a', label:diffs.length+' char'+(diffs.length>1?'s':'')+' differ', detail:html};
+  }
+  if(candRef.replace(/[^0-9]/g,'')===txnRef.replace(/[^0-9]/g,''))
+    return {cls:'a', label:'Formatting only', detail:''};
+  return {cls:'n', label:'Different', detail:''};
+}
+
+function amtCompare(candAmt, txnAmt){
+  const d = +(txnAmt - candAmt).toFixed(2);
+  if(d===0) return {cls:'g', label:'Exact', note:''};
+  const pct = Math.abs(d)/candAmt;
+  const asTax = +(candAmt*0.20).toFixed(2);
+  if(Math.abs(Math.abs(d) - asTax) < 0.05)
+    return {cls:'a', label:(d>0?'+':'')+d.toFixed(2), note:'= 20% tax deduction'};
+  if(pct<=0.05) return {cls:'a', label:(d>0?'+':'')+d.toFixed(2), note:(pct*100).toFixed(1)+'% out'};
+  return {cls:'n', label:(d>0?'+':'')+d.toFixed(2), note:(pct*100).toFixed(0)+'% out'};
+}
 
 let current = txns[0], chosen = null;
 const money = n => '£' + n.toLocaleString('en-GB',{minimumFractionDigits:2, maximumFractionDigits:2});
@@ -446,32 +487,28 @@ function row(sel, id, cells){
 
 function renderPotential(){
   el('pot-rows').innerHTML = potential.map(p => {
-    const diff = p.amt - current.amt;
-    const dTxt = diff===0 ? '<span class="tag g">Exact</span>'
-      : `<span class="tag ${Math.abs(diff)/current.amt<=0.05?'a':'n'}">${diff>0?'+':''}${diff.toFixed(2)}</span>`;
+    const a = amtCompare(p.amt, current.amt), r = refCompare(p.ref, current.ref);
     return row('pot', p.id, `
-      <td><b>${p.claim}</b></td>
-      <td>${p.name}</td>
+      <td><div class="mono">${r.detail || p.ref}</div><div class="sub"><span class="tag ${r.cls}" style="font-size:10.5px;padding:0 6px">${r.label}</span></div></td>
       <td class="num">${money(p.amt)}</td>
-      <td>${dTxt}</td>
-      <td class="mono">${p.ref}</td>
-      <td>${p.src}</td>
+      <td><span class="tag ${a.cls}">${a.label}</span>${a.note?`<div class="sub">${a.note}</div>`:''}</td>
+      <td>${p.payer}</td>
+      <td>${p.payee}</td>
+      <td>${levelTag[p.level]}</td>
       <td>${typeTag[p.type]}</td>`);
   }).join('');
 }
 
 function renderPool(){
   el('pool-rows').innerHTML = pool.map(p => {
-    const diff = p.amt - current.amt;
-    const dTxt = diff===0 ? '<span class="tag g">Exact</span>'
-      : `<span class="tag n">${diff>0?'+':''}${diff.toFixed(2)}</span>`;
+    const a = amtCompare(p.amt, current.amt), r = refCompare(p.ref, current.ref);
     return row('pool', p.id, `
-      <td><b>${p.claim}</b></td>
-      <td>${p.name}</td>
-      <td>${p.lender}</td>
+      <td><div class="mono">${r.detail || p.ref}</div><div class="sub"><span class="tag ${r.cls}" style="font-size:10.5px;padding:0 6px">${r.label}</span></div></td>
       <td class="num">${money(p.amt)}</td>
-      <td>${dTxt}</td>
-      <td class="mono">${p.ref}</td>
+      <td><span class="tag ${a.cls}">${a.label}</span>${a.note?`<div class="sub">${a.note}</div>`:''}</td>
+      <td>${p.payer}</td>
+      <td>${p.payee}</td>
+      <td>${levelTag[p.level]}</td>
       <td class="num">${p.raised}</td>`);
   }).join('');
 }
@@ -488,7 +525,7 @@ function renderChosen(){
         <div class="k">Will write to this expected transaction</div>
         <button class="clear-x" onclick="clearChoice()" title="Clear selection">Clear</button>
       </div>
-      <div class="v">${e.claim} — ${e.name}</div>
+      <div class="v">${e.payer} → ${e.payee}</div>
       <div class="r"><span>Expected</span><span class="num">${money(e.amt)}</span></div>
       <div class="r"><span>Received</span><span class="num">${money(current.amt)}</span></div>
       <div class="r"><span>Difference</span><span class="num" style="color:${diff===0?'var(--green)':'var(--amber)'}">${diff===0?'None':diff.toFixed(2)}</span></div>
@@ -499,9 +536,18 @@ function renderChosen(){
   updateSave(); renderSelBars();
 }
 
+function renderKeys(){
+  const html = `<div class="keystrip">
+    <span class="kk">Matching on</span>
+    <span class="kv"><em>Reference</em>${current.ref}</span>
+    <span class="kv"><em>Amount</em>${money(current.amt)}</span>
+    <span class="kv"><em>Payer alias</em>${current.payer} → ${current.lender}</span>
+  </div>`;
+  el('keys-pot').innerHTML = html; el('keys-pool').innerHTML = html;
+}
 function renderSelBars(){
   const html = chosen
-    ? `<div class="selbar"><span>Selected <b>${(pool.find(p=>p.id===chosen)||potential.find(p=>p.id===chosen)).claim}</b> — only one expected transaction can be linked.</span><span style="flex:1"></span><button class="clear-x" onclick="clearChoice()">Clear selection</button></div>`
+    ? `<div class="selbar"><span>Selected <b>${money((pool.find(p=>p.id===chosen)||potential.find(p=>p.id===chosen)).amt)}</b> expected transaction — only one expected transaction can be linked.</span><span style="flex:1"></span><button class="clear-x" onclick="clearChoice()">Clear selection</button></div>`
     : '';
   el('selbar-pot').innerHTML = html;
   el('selbar-pool').innerHTML = html;
@@ -545,14 +591,14 @@ document.querySelectorAll('.ctl').forEach(c=>{
 function toast(msg){ const t=el('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
 function save(){
   const o = el('outcome').value;
-  toast(o.startsWith('Matched') ? `Linked ${current.payer} to ${chosen ? (pool.find(p=>p.id===chosen)||potential.find(p=>p.id===chosen)).claim : ''}` : `Saved — ${o}`);
+  toast(o.startsWith('Matched') ? `Linked ${current.payer} to expected transaction` : `Saved — ${o}`);
   const i = txns.findIndex(t=>t.id===current.id);
   txns.splice(i,1);
   if(txns.length){ current = txns[Math.min(i,txns.length-1)]; chosen=null; el('outcome').selectedIndex=0; el('note').value=''; renderAll(); }
 }
 function skip(){ const i=txns.findIndex(t=>t.id===current.id); pick(txns[(i+1)%txns.length].id); }
 
-function renderAll(){ renderQueue(); renderActual(); renderSearch(); renderPotential(); renderPool(); renderChosen(); }
+function renderAll(){ renderKeys(); renderQueue(); renderActual(); renderSearch(); renderPotential(); renderPool(); renderChosen(); }
 renderAll();
 </script>
 </body>

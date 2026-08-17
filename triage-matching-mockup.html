@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transaction triage — matching screens</title>
+<style>
+  :root{
+    --navy:#0d1526; --navy-2:#16203a; --navy-line:#233152;
+    --page:#f4f6fa; --card:#ffffff; --line:#e3e8ef; --line-soft:#eef1f6;
+    --ink:#101828; --ink-2:#475467; --ink-3:#8a94a6;
+    --blue:#2563eb; --blue-soft:#eff4ff; --blue-line:#c7d9fe;
+    --green:#067647; --green-soft:#ecfdf3; --green-line:#a9e0c1;
+    --amber:#b54708; --amber-soft:#fffaeb; --amber-line:#f5d98a;
+    --red:#b42318; --red-soft:#fef3f2; --red-line:#f5b5ae;
+    --r:8px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    background:var(--page); color:var(--ink); font-size:13px; line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .shell{display:flex; height:100vh; overflow:hidden}
+
+  /* ---------- sidebar ---------- */
+  .side{width:214px; flex:0 0 214px; background:var(--navy); color:#cdd5e4; display:flex; flex-direction:column; padding:0}
+  .brand{display:flex; align-items:center; gap:9px; padding:16px 18px 18px}
+  .brand-mark{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#7c5cff,#4d8bff)}
+  .brand-name{font-size:16px;font-weight:600;color:#fff;letter-spacing:-.01em}
+  .side-sec{padding:14px 18px 6px; font-size:10px; letter-spacing:.09em; text-transform:uppercase; color:#5f6d88; font-weight:600}
+  .side-item{display:flex;align-items:center;gap:9px;margin:1px 8px;padding:7px 10px;border-radius:6px;color:#a9b4c8;cursor:pointer;font-size:13px}
+  .side-item:hover{background:var(--navy-2);color:#e4e9f2}
+  .side-item.on{background:#1d3a75;color:#fff}
+  .dot{width:7px;height:7px;border-radius:50%;background:#4d8bff;flex:0 0 7px}
+  .dot.g{background:#3ec98a}.dot.a{background:#f5b942}.dot.m{background:#8a94a6}
+  .side-foot{margin-top:auto;padding:14px 18px;border-top:1px solid var(--navy-line);color:#6d7a94;font-size:12px}
+
+  /* ---------- queue ---------- */
+  .queue{width:290px;flex:0 0 290px;background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column}
+  .queue-head{padding:14px 16px 12px;border-bottom:1px solid var(--line-soft)}
+  .queue-title{display:flex;align-items:baseline;justify-content:space-between}
+  .queue-title h2{margin:0;font-size:14px;font-weight:600}
+  .queue-count{font-size:12px;color:var(--ink-3)}
+  .queue-tools{display:flex;gap:6px;margin-top:10px}
+  .qbtn{flex:1;border:1px solid var(--line);background:#fff;border-radius:6px;padding:5px 8px;font:inherit;font-size:12px;color:var(--ink-2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+  .qbtn:hover{border-color:#c3cbd9;color:var(--ink)}
+  .queue-scroll{overflow:auto;flex:1}
+  .qrow{padding:11px 16px;border-bottom:1px solid var(--line-soft);cursor:pointer;border-left:3px solid transparent}
+  .qrow:hover{background:#fafbfd}
+  .qrow.on{background:var(--blue-soft);border-left-color:var(--blue)}
+  .qrow-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .qrow-payer{font-weight:600;font-size:13px;letter-spacing:-.01em}
+  .qrow-amt{font-variant-numeric:tabular-nums;font-weight:600;font-size:13px}
+  .qrow-sub{display:flex;justify-content:space-between;margin-top:3px;color:var(--ink-3);font-size:11.5px}
+
+  /* ---------- main ---------- */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .topbar{height:52px;flex:0 0 52px;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 20px;gap:14px}
+  .crumb{color:var(--ink-3);font-size:12.5px}
+  .crumb b{color:var(--ink);font-weight:600}
+  .search{flex:1;max-width:420px;margin:0 auto;border:1px solid var(--line);border-radius:7px;padding:6px 11px;color:var(--ink-3);font-size:12.5px;background:#fbfcfe}
+
+  .tabs{display:flex;gap:2px;padding:0 20px;background:var(--card);border-bottom:1px solid var(--line)}
+  .tab{padding:11px 13px;font-size:13px;color:var(--ink-2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:7px}
+  .tab:hover{color:var(--ink)}
+  .tab.on{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+  .pill{background:var(--line-soft);color:var(--ink-2);border-radius:20px;padding:1px 7px;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
+  .tab.on .pill{background:var(--blue-soft);color:var(--blue)}
+
+  .pane{flex:1;overflow:auto;padding:18px 20px 28px}
+  .panel{display:none}.panel.on{display:block}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px}
+  .card-head{padding:13px 16px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .card-head h3{margin:0;font-size:13.5px;font-weight:600}
+  .card-head p{margin:2px 0 0;font-size:12px;color:var(--ink-3)}
+
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
+  .fld{padding:13px 16px;border-bottom:1px solid var(--line-soft);border-right:1px solid var(--line-soft)}
+  .fld:nth-child(3n){border-right:none}
+  .fld-l{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .fld-v{margin-top:4px;font-size:13px}
+  .fld-v.num{font-variant-numeric:tabular-nums;font-weight:600}
+  .lnk{color:var(--blue);text-decoration:none}
+  .lnk:hover{text-decoration:underline}
+
+  /* toolbar for filters */
+  .toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .ctl{border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 10px;font:inherit;font-size:12.5px;color:var(--ink-2);cursor:pointer}
+  .ctl:hover{border-color:#c3cbd9}
+  .ctl.act{background:var(--blue-soft);border-color:var(--blue-line);color:var(--blue);font-weight:500}
+  .ctl-in{border:1px solid var(--line);border-radius:7px;padding:6px 10px;font:inherit;font-size:12.5px;min-width:190px}
+  .ctl-in::placeholder{color:var(--ink-3)}
+  .spacer{flex:1}
+  .hint{font-size:12px;color:var(--ink-3)}
+
+  table{width:100%;border-collapse:collapse;background:var(--card)}
+  thead th{
+    text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);
+    font-weight:600;padding:9px 14px;border-bottom:1px solid var(--line);background:#fbfcfe;white-space:nowrap;cursor:pointer;user-select:none
+  }
+  thead th:hover{color:var(--ink-2)}
+  thead th .sort{opacity:.4;margin-left:4px}
+  tbody td{padding:11px 14px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+  tbody tr:hover{background:#fafbfd}
+  tbody tr.sel{background:var(--blue-soft)}
+  tbody tr.sel:hover{background:#e6eeff}
+  .num{font-variant-numeric:tabular-nums}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+  .sub{color:var(--ink-3);font-size:11.5px;margin-top:2px}
+
+  .tag{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:2px 9px;font-size:11.5px;font-weight:500;border:1px solid}
+  .tag.b{background:var(--blue-soft);border-color:var(--blue-line);color:var(--blue)}
+  .tag.g{background:var(--green-soft);border-color:var(--green-line);color:var(--green)}
+  .tag.a{background:var(--amber-soft);border-color:var(--amber-line);color:var(--amber)}
+  .tag.r{background:var(--red-soft);border-color:var(--red-line);color:var(--red)}
+  .tag.n{background:#f5f7fa;border-color:var(--line);color:var(--ink-2)}
+
+  .radio{width:16px;height:16px;border:1.5px solid #c3cbd9;border-radius:50%;display:inline-block;position:relative}
+  tr.sel .radio{border-color:var(--blue);background:var(--blue)}
+  tr.sel .radio::after{content:"";position:absolute;inset:4px;background:#fff;border-radius:50%}
+
+  .bar{height:6px;background:var(--line-soft);border-radius:4px;overflow:hidden;width:110px}
+  .bar span{display:block;height:100%;background:var(--blue);border-radius:4px}
+
+  /* search funnel */
+  .funnel{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  .fcell{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:13px 14px}
+  .fcell .n{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .fcell .l{font-size:11.5px;color:var(--ink-2);margin-top:2px;line-height:1.35}
+  .fcell.hit{border-color:var(--blue-line);background:var(--blue-soft)}
+  .fcell.hit .n{color:var(--blue)}
+
+  /* right rail */
+  .rail{width:320px;flex:0 0 320px;background:var(--card);border-left:1px solid var(--line);display:flex;flex-direction:column}
+  .rail-head{padding:14px 16px;border-bottom:1px solid var(--line-soft);border-left:3px solid var(--blue)}
+  .rail-head h2{margin:0;font-size:14px;font-weight:600}
+  .rail-head p{margin:2px 0 0;font-size:12px;color:var(--ink-3)}
+  .rail-body{padding:16px;overflow:auto;flex:1}
+  .lbl{display:block;font-size:12px;font-weight:600;margin-bottom:6px}
+  .sel-box{width:100%;border:1px solid var(--line);border-radius:7px;padding:8px 10px;font:inherit;font-size:13px;background:#fff;color:var(--ink)}
+  .field{margin-bottom:16px}
+  .note{width:100%;border:1px solid var(--line);border-radius:7px;padding:8px 10px;font:inherit;font-size:13px;min-height:72px;resize:vertical}
+  .chosen{border:1px solid var(--blue-line);background:var(--blue-soft);border-radius:9px;padding:12px 13px;margin-bottom:16px}
+  .chosen .k{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--blue);font-weight:600}
+  .chosen .v{font-size:13px;margin-top:6px;font-weight:600}
+  .chosen .r{display:flex;justify-content:space-between;margin-top:5px;font-size:12px;color:var(--ink-2)}
+  .empty-chosen{border:1px dashed #cdd5e2;border-radius:9px;padding:16px 13px;text-align:center;color:var(--ink-3);font-size:12.5px;margin-bottom:16px;line-height:1.5}
+  .clear-x{border:1px solid var(--blue-line);background:#fff;color:var(--blue);border-radius:6px;padding:2px 8px;font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;flex:0 0 auto}
+  .clear-x:hover{background:#fff;border-color:var(--blue)}
+  .write-note{margin-top:9px;padding-top:8px;border-top:1px solid var(--blue-line);font-size:11.5px;color:var(--ink-2)}
+  .selbar{display:flex;align-items:center;gap:10px;background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12.5px;color:var(--blue)}
+  .selbar b{color:var(--ink)}
+  .rail-foot{padding:13px 16px;border-top:1px solid var(--line-soft);display:flex;gap:8px}
+  .btn{flex:1;border-radius:7px;padding:9px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink-2)}
+  .btn:hover{border-color:#c3cbd9}
+  .btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+  .btn.pri:hover{background:#1d4fd7}
+  .btn.pri:disabled{background:#c7d3e6;border-color:#c7d3e6;cursor:not-allowed}
+  .checks{display:flex;flex-direction:column;gap:8px}
+  .chk{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ink-2)}
+
+  .empty{padding:48px 20px;text-align:center;color:var(--ink-3)}
+  .empty h4{margin:0 0 6px;font-size:14px;color:var(--ink-2);font-weight:600}
+  .empty p{margin:0;font-size:12.5px}
+
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:50;box-shadow:0 8px 24px rgba(16,24,40,.24)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .screen-note{background:#fffaeb;border:1px solid var(--amber-line);border-radius:9px;padding:11px 14px;margin-bottom:14px;font-size:12.5px;color:#7a4708;line-height:1.5}
+  .screen-note b{color:#5c3506}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- sidebar -->
+  <nav class="side">
+    <div class="brand"><div class="brand-mark"></div><div class="brand-name">volume</div></div>
+    <div class="side-sec">Objects</div>
+    <div class="side-item"><span class="dot m"></span>All</div>
+    <div class="side-item"><span class="dot"></span>Inbound email</div>
+    <div class="side-item"><span class="dot"></span>Inbound SMS</div>
+    <div class="side-item on"><span class="dot"></span>Transaction</div>
+    <div class="side-sec">Triage queues</div>
+    <div class="side-item on"><span class="dot a"></span>Needs matching <span style="margin-left:auto;font-size:11px;opacity:.8">6</span></div>
+    <div class="side-item"><span class="dot g"></span>Matched</div>
+    <div class="side-item"><span class="dot m"></span>Can't match</div>
+    <div class="side-foot">Triage configuration</div>
+  </nav>
+
+  <!-- queue -->
+  <section class="queue">
+    <div class="queue-head">
+      <div class="queue-title"><h2>Needs matching</h2><span class="queue-count">6 transactions</span></div>
+      <div class="queue-tools">
+        <button class="qbtn">Sort: date ↓</button>
+        <button class="qbtn">Filter</button>
+      </div>
+    </div>
+    <div class="queue-scroll" id="queue"></div>
+  </section>
+
+  <!-- main -->
+  <section class="main">
+    <div class="topbar">
+      <div class="crumb">Triage / <b>Transaction matching</b></div>
+      <div class="search">Search this transaction…</div>
+      <div class="crumb">Transaction record view</div>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <div class="tab on" data-p="actual">Actual transaction</div>
+      <div class="tab" data-p="search">Match search <span class="pill" id="pill-search">1</span></div>
+      <div class="tab" data-p="potential">Potential matches <span class="pill" id="pill-pot">9</span></div>
+      <div class="tab" data-p="pool">Expected transaction pool <span class="pill" id="pill-pool">9</span></div>
+      <div class="tab" data-p="history">History</div>
+    </div>
+
+    <div class="pane">
+
+      <!-- ACTUAL -->
+      <div class="panel on" data-p="actual">
+        <div class="card">
+          <div class="card-head">
+            <div><h3>Transaction data</h3><p>Read only — as received from the bank feed</p></div>
+            <span class="tag n" id="a-status">Cleared</span>
+          </div>
+          <div class="grid" id="actual-grid"></div>
+        </div>
+      </div>
+
+      <!-- SEARCH -->
+      <div class="panel" data-p="search">
+        <div class="screen-note"><b>What this tab is for.</b> It shows what the automated matcher did and why it stopped. Each row is one search attempt; expand to see the counts at every stage.</div>
+        <div class="toolbar">
+          <button class="ctl act">All attempts</button>
+          <button class="ctl">Latest only</button>
+          <div class="spacer"></div>
+          <span class="hint">Sorted by run time, newest first</span>
+        </div>
+        <div class="funnel" id="funnel"></div>
+        <div class="card">
+          <div class="card-head"><div><h3>Search attempts</h3><p>One record per run of the matching workflow</p></div></div>
+          <table>
+            <thead><tr><th>Run at</th><th>Outcome</th><th>Payer</th><th>Within 5%</th><th>Reference ok</th><th>Full match</th></tr></thead>
+            <tbody id="search-rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- POTENTIAL -->
+      <div class="panel" data-p="potential">
+        <div class="screen-note"><b>What this tab is for.</b> Every candidate the matcher recorded. Today the workflow writes one row for <b>every</b> unlinked expected transaction from this lender, so this is the payer-tier set — so every row would currently read <b>Payer only</b>. The type column uses the three options already declared on the object.</div>
+        <div class="toolbar">
+          <input class="ctl-in" placeholder="Filter by claim, reference or agreement…">
+          <button class="ctl act">All types</button>
+          <button class="ctl">Payer and reference</button>
+          <button class="ctl">Payer and amount</button>
+          <button class="ctl">Payer only</button>
+          <div class="spacer"></div>
+          <span class="hint">9 candidates</span>
+        </div>
+        <div id="selbar-pot"></div>
+        <div class="card">
+          <table>
+            <thead><tr>
+              <th style="width:34px"></th><th>Claim</th><th>Claimant</th><th>Expected amount</th>
+              <th>Difference</th><th>Reference</th><th>Source</th><th>Type</th>
+            </tr></thead>
+            <tbody id="pot-rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- POOL -->
+      <div class="panel" data-p="pool">
+        <div class="screen-note"><b>What this tab is for.</b> Every unlinked expected transaction, not just the shortlist. Use it when the right one didn't make the candidate list — for example when the amount differs by more than 5%.</div>
+        <div class="toolbar">
+          <input class="ctl-in" placeholder="Search claim, claimant, reference…">
+          <button class="ctl act">Same lender</button>
+          <button class="ctl">Any lender</button>
+          <button class="ctl">Unparented only</button>
+          <div class="spacer"></div>
+          <span class="hint">9 of 214 shown</span>
+        </div>
+        <div id="selbar-pool"></div>
+        <div class="card">
+          <table>
+            <thead><tr>
+              <th style="width:34px"></th><th>Claim</th><th>Claimant</th><th>Lender</th>
+              <th>Expected amount</th><th>Difference</th><th>Reference</th><th>Raised</th>
+            </tr></thead>
+            <tbody id="pool-rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="panel" data-p="history">
+        <div class="card">
+          <div class="card-head"><div><h3>History</h3><p>Every change to this transaction</p></div></div>
+          <table>
+            <thead><tr><th>When</th><th>Who</th><th>What changed</th></tr></thead>
+            <tbody>
+              <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>Transaction created from ShieldPay notification</td></tr>
+              <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>Payee set to Alawco Client Account</td></tr>
+              <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>Payer resolved to Black Horse Limited via alias “BLACKHORSE”</td></tr>
+              <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>Match search run — outcome <span class="tag a">close_matches_found</span></td></tr>
+              <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>4 potential matches recorded</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- right rail -->
+  <aside class="rail">
+    <div class="rail-head"><h2>Triage</h2><p>Review and resolve</p></div>
+    <div class="rail-body">
+      <div id="chosen-slot"></div>
+
+      <div class="field">
+        <label class="lbl" for="outcome">Triage outcome</label>
+        <select class="sel-box" id="outcome">
+          <option value="">Select an outcome…</option>
+          <option>Matched — linked to expected transaction</option>
+          <option>Can't match — no expected transaction exists</option>
+          <option>Can't match — needs lender query</option>
+          <option>Not our money — return to sender</option>
+          <option>Park — waiting on remittance advice</option>
+        </select>
+      </div>
+
+      <div class="field" id="reason-field" style="display:none">
+        <label class="lbl">Why it couldn't be matched</label>
+        <div class="checks">
+          <label class="chk"><input type="checkbox"> Amount differs from every expectation</label>
+          <label class="chk"><input type="checkbox"> Payer not recognised</label>
+          <label class="chk"><input type="checkbox"> Advice not yet received</label>
+          <label class="chk"><input type="checkbox"> Duplicate payment</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="note">Note</label>
+        <textarea class="note" id="note" placeholder="Anything the next person needs to know…"></textarea>
+      </div>
+    </div>
+    <div class="rail-foot">
+      <button class="btn" onclick="skip()">Skip</button>
+      <button class="btn pri" id="save" disabled onclick="save()">Save triage</button>
+    </div>
+  </aside>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const txns = [
+  {id:'t1', payer:'BLACKHORSE', lender:'Black Horse Limited', amt:456.86, ccy:'GBP', ref:'3323532', date:'14 Aug 2026, 16:13', outcome:'close_matches_found', tone:'a', src:'ShieldPay', payee:'Alawco Client Account', settlement:'01m001mtjvdj9x99v6knbh0hyh'},
+  {id:'t2', payer:'MOTONOVO FIN', lender:'MotoNovo Finance', amt:2140.00, ccy:'GBP', ref:'MN-88421', date:'14 Aug 2026, 15:02', outcome:'full_match_found_(multiple)', tone:'a', src:'ShieldPay', payee:'Alawco Client Account', settlement:'01m001kd82hs7cc1p0mfr4tqzz'},
+  {id:'t3', payer:'CLOSE BROS MF', lender:'Close Brothers', amt:1875.42, ccy:'GBP', ref:'—', date:'14 Aug 2026, 11:47', outcome:'circumstantial_match_found', tone:'a', src:'ShieldPay', payee:'Alawco Client Account', settlement:'—'},
+  {id:'t4', payer:'SANTANDER CF', lender:'Santander Consumer', amt:912.10, ccy:'GBP', ref:'SC1140922', date:'13 Aug 2026, 09:21', outcome:'no_match_found', tone:'r', src:'ShieldPay', payee:'Alawco Client Account', settlement:'—'},
+  {id:'t5', payer:'BARCLAYS PTNR', lender:'—', amt:640.00, ccy:'GBP', ref:'BP-2201', date:'12 Aug 2026, 14:55', outcome:'no_match_found', tone:'r', src:'ShieldPay', payee:'Alawco Client Account', settlement:'—'},
+  {id:'t6', payer:'BLACKHORSE', lender:'Black Horse Limited', amt:1204.77, ccy:'GBP', ref:'3323998', date:'12 Aug 2026, 10:08', outcome:'close_matches_found', tone:'a', src:'ShieldPay', payee:'Alawco Client Account', settlement:'01m0028fjw2b7xxq1p5vd3nk44'},
+];
+
+const potential = [
+  {id:'e1', claim:'CLM-40218', name:'S. Whitmore', amt:456.86, ref:'3323532', src:'Payment advice', type:'payer_and_reference'},
+  {id:'e2', claim:'CLM-39877', name:'R. Adeyemi', amt:456.86, ref:'3323601', src:'Payment advice', type:'payer_and_reference'},
+  {id:'e3', claim:'CLM-41002', name:'J. Nowak', amt:452.10, ref:'—', src:'Offer acceptance', type:'payer_and_amount'},
+  {id:'e4', claim:'CLM-40560', name:'H. Bakshi', amt:461.00, ref:'—', src:'Offer acceptance', type:'payer_and_amount'},
+  {id:'e5', claim:'CLM-40771', name:'D. Okonjo', amt:398.20, ref:'3323544', src:'Payment advice', type:'payer_only'},
+  {id:'e6', claim:'CLM-39220', name:'L. Pritchard', amt:520.00, ref:'—', src:'Offer acceptance', type:'payer_only'},
+  {id:'e7', claim:'CLM-41188', name:'M. Farrow', amt:456.86, ref:'—', src:'Offer acceptance', type:'payer_and_amount'},
+  {id:'e8', claim:'CLM-40033', name:'A. Siddiqui', amt:1204.77, ref:'3323998', src:'Payment advice', type:'payer_only'},
+  {id:'e9', claim:'CLM-40904', name:'T. Greaves', amt:333.15, ref:'—', src:'Offer acceptance', type:'payer_only'},
+];
+// potential_matches.type — declared options on the object
+const typeTag = {
+  payer_and_reference: '<span class="tag b">Payer and reference</span>',
+  payer_and_amount:    '<span class="tag a">Payer and amount</span>',
+  payer_only:          '<span class="tag n">Payer only</span>'
+};
+
+const pool = [
+  {id:'e1', claim:'CLM-40218', name:'S. Whitmore', lender:'Black Horse Limited', amt:456.86, ref:'3323532', raised:'11 Aug 2026'},
+  {id:'e2', claim:'CLM-39877', name:'R. Adeyemi', lender:'Black Horse Limited', amt:456.86, ref:'3323601', raised:'11 Aug 2026'},
+  {id:'e3', claim:'CLM-41002', name:'J. Nowak', lender:'Black Horse Limited', amt:452.10, ref:'—', raised:'09 Aug 2026'},
+  {id:'e4', claim:'CLM-40560', name:'H. Bakshi', lender:'Black Horse Limited', amt:461.00, ref:'—', raised:'08 Aug 2026'},
+  {id:'e5', claim:'CLM-40771', name:'D. Okonjo', lender:'Black Horse Limited', amt:398.20, ref:'3323544', raised:'08 Aug 2026'},
+  {id:'e6', claim:'CLM-39220', name:'L. Pritchard', lender:'Black Horse Limited', amt:520.00, ref:'—', raised:'07 Aug 2026'},
+  {id:'e7', claim:'CLM-41188', name:'M. Farrow', lender:'Black Horse Limited', amt:456.86, ref:'—', raised:'06 Aug 2026'},
+  {id:'e8', claim:'CLM-40033', name:'A. Siddiqui', lender:'Black Horse Limited', amt:1204.77, ref:'3323998', raised:'05 Aug 2026'},
+  {id:'e9', claim:'CLM-40904', name:'T. Greaves', lender:'Black Horse Limited', amt:333.15, ref:'—', raised:'04 Aug 2026'},
+];
+
+let current = txns[0], chosen = null;
+const money = n => '£' + n.toLocaleString('en-GB',{minimumFractionDigits:2, maximumFractionDigits:2});
+const el = id => document.getElementById(id);
+
+function renderQueue(){
+  el('queue').innerHTML = txns.map(t => `
+    <div class="qrow ${t.id===current.id?'on':''}" onclick="pick('${t.id}')">
+      <div class="qrow-top"><span class="qrow-payer">${t.payer}</span><span class="qrow-amt num">${money(t.amt)}</span></div>
+      <div class="qrow-sub"><span>${t.date}</span><span class="tag ${t.tone}" style="font-size:10.5px;padding:1px 7px">${t.outcome.replace(/_/g,' ')}</span></div>
+    </div>`).join('');
+}
+
+function renderActual(){
+  const t = current;
+  const f = [
+    ['Direction','Credit'],['Transaction date',t.date],['Status','Cleared'],
+    ['Amount', money(t.amt), 'num'],['Payment reference', t.ref],['Currency', t.ccy],
+    ['Payer (text)', t.payer],['Payer', t.lender==='—' ? '<span style="color:#8a94a6">Not resolved</span>' : `<a class="lnk" href="#">${t.lender}</a>`],['Source', `<a class="lnk" href="#">${t.src}</a>`],
+    ['Payee (text)', t.payee],['Payee','<a class="lnk" href="#">Alawco client account</a>'],['Settlement', t.settlement==='—' ? '<span style="color:#8a94a6">None</span>' : `<a class="lnk mono" href="#">${t.settlement.slice(0,14)}…</a>`]
+  ];
+  el('actual-grid').innerHTML = f.map(([l,v,c]) =>
+    `<div class="fld"><div class="fld-l">${l}</div><div class="fld-v ${c||''}">${v}</div></div>`).join('');
+}
+
+function renderSearch(){
+  const cells = [
+    ['9','Same lender, currency and direction','hit'],
+    ['3','Also within 5% on amount','hit'],
+    ['2','Also no reference mismatch','hit'],
+    ['0','Full match','']
+  ];
+  el('funnel').innerHTML = cells.map(([n,l,c]) =>
+    `<div class="fcell ${c}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+  el('search-rows').innerHTML = `
+    <tr><td class="num">14 Aug 2026, 16:14</td>
+      <td><span class="tag a">close_matches_found</span></td>
+      <td class="num">9</td><td class="num">3</td><td class="num">2</td><td class="num">0</td></tr>`;
+}
+
+function row(sel, id, cells){
+  return `<tr class="${chosen===id?'sel':''}" onclick="choose('${id}')">
+    <td><span class="radio"></span></td>${cells}</tr>`;
+}
+
+function renderPotential(){
+  el('pot-rows').innerHTML = potential.map(p => {
+    const diff = p.amt - current.amt;
+    const dTxt = diff===0 ? '<span class="tag g">Exact</span>'
+      : `<span class="tag ${Math.abs(diff)/current.amt<=0.05?'a':'n'}">${diff>0?'+':''}${diff.toFixed(2)}</span>`;
+    return row('pot', p.id, `
+      <td><b>${p.claim}</b></td>
+      <td>${p.name}</td>
+      <td class="num">${money(p.amt)}</td>
+      <td>${dTxt}</td>
+      <td class="mono">${p.ref}</td>
+      <td>${p.src}</td>
+      <td>${typeTag[p.type]}</td>`);
+  }).join('');
+}
+
+function renderPool(){
+  el('pool-rows').innerHTML = pool.map(p => {
+    const diff = p.amt - current.amt;
+    const dTxt = diff===0 ? '<span class="tag g">Exact</span>'
+      : `<span class="tag n">${diff>0?'+':''}${diff.toFixed(2)}</span>`;
+    return row('pool', p.id, `
+      <td><b>${p.claim}</b></td>
+      <td>${p.name}</td>
+      <td>${p.lender}</td>
+      <td class="num">${money(p.amt)}</td>
+      <td>${dTxt}</td>
+      <td class="mono">${p.ref}</td>
+      <td class="num">${p.raised}</td>`);
+  }).join('');
+}
+
+function renderChosen(){
+  const slot = el('chosen-slot');
+  if(!chosen){
+    slot.innerHTML = `<div class="empty-chosen">No expected transaction selected.<br>Pick one from potential matches or the pool, or record why none fit.</div>`;
+  } else {
+    const e = pool.find(p=>p.id===chosen) || potential.find(p=>p.id===chosen);
+    const diff = e.amt - current.amt;
+    slot.innerHTML = `<div class="chosen">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div class="k">Will write to this expected transaction</div>
+        <button class="clear-x" onclick="clearChoice()" title="Clear selection">Clear</button>
+      </div>
+      <div class="v">${e.claim} — ${e.name}</div>
+      <div class="r"><span>Expected</span><span class="num">${money(e.amt)}</span></div>
+      <div class="r"><span>Received</span><span class="num">${money(current.amt)}</span></div>
+      <div class="r"><span>Difference</span><span class="num" style="color:${diff===0?'var(--green)':'var(--amber)'}">${diff===0?'None':diff.toFixed(2)}</span></div>
+      <div class="write-note">Sets <span class="mono">transaction_id</span> on this record</div>
+    </div>`;
+    if(!el('outcome').value) el('outcome').selectedIndex = 1;
+  }
+  updateSave(); renderSelBars();
+}
+
+function renderSelBars(){
+  const html = chosen
+    ? `<div class="selbar"><span>Selected <b>${(pool.find(p=>p.id===chosen)||potential.find(p=>p.id===chosen)).claim}</b> — only one expected transaction can be linked.</span><span style="flex:1"></span><button class="clear-x" onclick="clearChoice()">Clear selection</button></div>`
+    : '';
+  el('selbar-pot').innerHTML = html;
+  el('selbar-pool').innerHTML = html;
+}
+function choose(id){
+  chosen = (chosen===id ? null : id);   // one only; clicking the selected row clears it
+  renderPotential(); renderPool(); renderChosen();
+}
+function clearChoice(){
+  chosen = null;
+  if(el('outcome').selectedIndex === 1) el('outcome').selectedIndex = 0;
+  el('reason-field').style.display = 'none';
+  renderPotential(); renderPool(); renderChosen();
+}
+function pick(id){ current = txns.find(t=>t.id===id); chosen=null; el('outcome').selectedIndex=0; el('note').value=''; renderAll(); }
+function updateSave(){ el('save').disabled = !el('outcome').value; }
+
+el('outcome').addEventListener('change', e=>{
+  el('reason-field').style.display = e.target.value.startsWith("Can't match") ? 'block' : 'none';
+  updateSave();
+});
+
+document.querySelectorAll('#tabs .tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('#tabs .tab').forEach(t=>t.classList.remove('on'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+    tab.classList.add('on');
+    document.querySelector(`.panel[data-p="${tab.dataset.p}"]`).classList.add('on');
+  });
+});
+
+document.querySelectorAll('.ctl').forEach(c=>{
+  c.addEventListener('click', ()=>{
+    if(c.classList.contains('ctl-in')) return;
+    const sibs = c.parentElement.querySelectorAll('.ctl');
+    sibs.forEach(s=>s.classList.remove('act'));
+    c.classList.add('act');
+  });
+});
+
+function toast(msg){ const t=el('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+function save(){
+  const o = el('outcome').value;
+  toast(o.startsWith('Matched') ? `Linked ${current.payer} to ${chosen ? (pool.find(p=>p.id===chosen)||potential.find(p=>p.id===chosen)).claim : ''}` : `Saved — ${o}`);
+  const i = txns.findIndex(t=>t.id===current.id);
+  txns.splice(i,1);
+  if(txns.length){ current = txns[Math.min(i,txns.length-1)]; chosen=null; el('outcome').selectedIndex=0; el('note').value=''; renderAll(); }
+}
+function skip(){ const i=txns.findIndex(t=>t.id===current.id); pick(txns[(i+1)%txns.length].id); }
+
+function renderAll(){ renderQueue(); renderActual(); renderSearch(); renderPotential(); renderPool(); renderChosen(); }
+renderAll();
+</script>
+</body>
+</html>

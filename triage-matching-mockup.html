@@ -109,9 +109,15 @@
   tbody tr.sel:hover{background:#e6eeff}
   .num{font-variant-numeric:tabular-nums}
   .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
-  .sub{color:var(--ink-3);font-size:11.5px;margin-top:2px}
+  .sub{color:var(--ink-3);font-size:11.5px;margin-top:3px;white-space:nowrap}
+  td.col-ref{min-width:132px;white-space:nowrap}
+  td.col-diff{min-width:124px;white-space:nowrap}
+  th.col-ref{min-width:132px}
+  th.col-diff{min-width:124px}
+  tbody td{white-space:nowrap}
+  .pane{overflow:auto}
 
-  .tag{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:2px 9px;font-size:11.5px;font-weight:500;border:1px solid}
+  .tag{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:2px 9px;font-size:11.5px;font-weight:500;border:1px solid;white-space:nowrap}
   .tag.b{background:var(--blue-soft);border-color:var(--blue-line);color:var(--blue)}
   .tag.g{background:var(--green-soft);border-color:var(--green-line);color:var(--green)}
   .tag.a{background:var(--amber-soft);border-color:var(--amber-line);color:var(--amber)}
@@ -273,7 +279,7 @@
         <div class="card">
           <table>
             <thead><tr>
-              <th style="width:34px"></th><th>Reference</th><th>Expected amount</th><th>Difference</th>
+              <th style="width:34px"></th><th class="col-ref">Reference</th><th>Expected amount</th><th class="col-diff">Difference</th>
               <th>Payer</th><th>Payee</th><th>Level</th><th>Type</th>
             </tr></thead>
             <tbody id="pot-rows"></tbody>
@@ -298,7 +304,7 @@
         <div class="card">
           <table>
             <thead><tr>
-              <th style="width:34px"></th><th>Reference</th><th>Expected amount</th><th>Difference</th>
+              <th style="width:34px"></th><th class="col-ref">Reference</th><th>Expected amount</th><th class="col-diff">Difference</th>
               <th>Payer</th><th>Payee</th><th>Level</th><th>Raised</th>
             </tr></thead>
             <tbody id="pool-rows"></tbody>
@@ -423,10 +429,10 @@ function refCompare(candRef, txnRef){
       if(!same) diffs.push(i);
       html += same ? candRef[i] : '<u class="chdiff">'+candRef[i]+'</u>';
     }
-    if(diffs.length<=2) return {cls:'a', label:diffs.length+' char'+(diffs.length>1?'s':'')+' differ', detail:html};
+    if(diffs.length<=2) return {cls:'a', label:diffs.length+' char diff', detail:html};
   }
   if(candRef.replace(/[^0-9]/g,'')===txnRef.replace(/[^0-9]/g,''))
-    return {cls:'a', label:'Formatting only', detail:''};
+    return {cls:'a', label:'Format only', detail:''};
   return {cls:'n', label:'Different', detail:''};
 }
 
@@ -436,7 +442,7 @@ function amtCompare(candAmt, txnAmt){
   const pct = Math.abs(d)/candAmt;
   const asTax = +(candAmt*0.20).toFixed(2);
   if(Math.abs(Math.abs(d) - asTax) < 0.05)
-    return {cls:'a', label:(d>0?'+':'')+d.toFixed(2), note:'= 20% tax deduction'};
+    return {cls:'a', label:(d>0?'+':'')+d.toFixed(2), note:'= 20% tax'};
   if(pct<=0.05) return {cls:'a', label:(d>0?'+':'')+d.toFixed(2), note:(pct*100).toFixed(1)+'% out'};
   return {cls:'n', label:(d>0?'+':'')+d.toFixed(2), note:(pct*100).toFixed(0)+'% out'};
 }
@@ -489,9 +495,9 @@ function renderPotential(){
   el('pot-rows').innerHTML = potential.map(p => {
     const a = amtCompare(p.amt, current.amt), r = refCompare(p.ref, current.ref);
     return row('pot', p.id, `
-      <td><div class="mono">${r.detail || p.ref}</div><div class="sub"><span class="tag ${r.cls}" style="font-size:10.5px;padding:0 6px">${r.label}</span></div></td>
+      <td class="col-ref"><div class="mono">${r.detail || p.ref}</div><div class="sub"><span class="tag ${r.cls}" style="font-size:10.5px;padding:1px 7px">${r.label}</span></div></td>
       <td class="num">${money(p.amt)}</td>
-      <td><span class="tag ${a.cls}">${a.label}</span>${a.note?`<div class="sub">${a.note}</div>`:''}</td>
+      <td class="col-diff"><span class="tag ${a.cls}">${a.label}</span>${a.note?`<div class="sub">${a.note}</div>`:''}</td>
       <td>${p.payer}</td>
       <td>${p.payee}</td>
       <td>${levelTag[p.level]}</td>
@@ -503,9 +509,9 @@ function renderPool(){
   el('pool-rows').innerHTML = pool.map(p => {
     const a = amtCompare(p.amt, current.amt), r = refCompare(p.ref, current.ref);
     return row('pool', p.id, `
-      <td><div class="mono">${r.detail || p.ref}</div><div class="sub"><span class="tag ${r.cls}" style="font-size:10.5px;padding:0 6px">${r.label}</span></div></td>
+      <td class="col-ref"><div class="mono">${r.detail || p.ref}</div><div class="sub"><span class="tag ${r.cls}" style="font-size:10.5px;padding:1px 7px">${r.label}</span></div></td>
       <td class="num">${money(p.amt)}</td>
-      <td><span class="tag ${a.cls}">${a.label}</span>${a.note?`<div class="sub">${a.note}</div>`:''}</td>
+      <td class="col-diff"><span class="tag ${a.cls}">${a.label}</span>${a.note?`<div class="sub">${a.note}</div>`:''}</td>
       <td>${p.payer}</td>
       <td>${p.payee}</td>
       <td>${levelTag[p.level]}</td>

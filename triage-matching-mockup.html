@@ -184,19 +184,21 @@
   .empty-chosen{border:1px dashed #cdd5e2;border-radius:9px;padding:16px 13px;text-align:center;color:var(--ink-3);font-size:12.5px;margin-bottom:16px;line-height:1.5}
   .clear-x{border:1px solid var(--blue-line);background:#fff;color:var(--blue);border-radius:6px;padding:2px 8px;font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;flex:0 0 auto}
   .clear-x:hover{background:#fff;border-color:var(--blue)}
-  .write-note{margin-top:9px;padding-top:8px;border-top:1px solid var(--blue-line);font-size:11.5px;color:var(--ink-2)}
-  .selbar{display:flex;align-items:center;gap:10px;background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12.5px;color:var(--blue)}
+  .write-note{margin-top:11px;padding-top:9px;border-top:1px solid var(--blue-line);font-size:11.5px;color:var(--ink-2);line-height:1.5}
+  .side-lbl{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--blue);font-weight:600;margin:11px 0 5px}
+  .side-box{background:#fff;border:1px solid var(--blue-line);border-radius:7px;padding:8px 10px}
+  .side-box .r{display:flex;justify-content:space-between;gap:10px;margin:0;padding:2px 0;font-size:12px;color:var(--ink-2)}
+  .side-box .r span:last-child{color:var(--ink);font-weight:500;text-align:right}
+  .joiner{text-align:center;font-size:11.5px;color:var(--blue);font-weight:600;margin:9px 0 0}
+  .selbar{display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px}
   .selbar b{color:var(--ink)}
-  .keystrip{display:flex;align-items:center;gap:18px;background:#fbfcfe;border:1px solid var(--line);border-radius:8px;padding:9px 14px;margin-bottom:12px;flex-wrap:wrap}
-  .keystrip .kk{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .keystrip{display:flex;align-items:center;gap:18px;background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:8px;padding:9px 14px;margin-bottom:12px;flex-wrap:wrap}
+  .keystrip .kk{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--blue);font-weight:600}
   .keystrip .kv{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:7px}
-  .keystrip .kv em{font-style:normal;font-size:11.5px;font-weight:500;color:var(--ink-3)}
+  .keystrip .kv em{font-style:normal;font-size:11.5px;font-weight:500;color:var(--ink-2)}
   .chdiff{text-decoration:none;color:#b42318;font-weight:700;border-bottom:2px solid #f5b5ae}
   .lvl{font-size:12.5px;color:var(--ink-2)}
-  .lvl.strong{font-weight:600;color:var(--ink)}
   .ty{font-size:12.5px;color:var(--ink-2)}
-  .ty.strong{font-weight:600;color:var(--ink)}
-  .ty.muted{color:var(--ink-3)}
   .sig-g{color:var(--green)}
   .sig-a{color:var(--amber)}
   .sig-n{color:var(--ink-3);font-weight:500}
@@ -273,7 +275,6 @@
       <div class="tab" data-p="search">Match search <span class="pill" id="pill-search">1</span></div>
       <div class="tab" data-p="potential">Potential matches <span class="pill" id="pill-pot">9</span></div>
       <div class="tab" data-p="pool">Expected transaction pool <span class="pill" id="pill-pool">9</span></div>
-      <div class="tab" data-p="history">History</div>
     </div>
 
     <div class="pane">
@@ -362,22 +363,6 @@
         </div>
       </div>
 
-      <!-- HISTORY -->
-      <div class="panel" data-p="history">
-        <div class="card">
-          <div class="card-head"><div><h3>History</h3><p>Every change to this transaction</p></div></div>
-          <table>
-            <thead><tr><th>When</th><th>Who</th><th>What changed</th></tr></thead>
-            <tbody>
-              <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>Transaction created from ShieldPay notification</td></tr>
-              <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>Payee set to Alawco Client Account</td></tr>
-              <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>Payer resolved to Black Horse Limited via alias “BLACKHORSE”</td></tr>
-              <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>Match search run — outcome <b class="mono">close_matches_found</b></td></tr>
-              <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>4 potential matches recorded</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
 
     </div>
   </section>
@@ -447,9 +432,9 @@ const potential = [
 ];
 // potential_matches.type — declared options on the object
 const typeTag = {
-  payer_and_reference: '<span class="ty strong">Payer and reference</span>',
+  payer_and_reference: '<span class="ty">Payer and reference</span>',
   payer_and_amount:    '<span class="ty">Payer and amount</span>',
-  payer_only:          '<span class="ty muted">Payer only</span>'
+  payer_only:          '<span class="ty">Payer only</span>'
 };
 
 const pool = [
@@ -464,7 +449,7 @@ const pool = [
   {id:'e9', payer:'Black Horse Limited', payee:'—',                     amt:333.15, ref:'—',       level:'Unparented', raised:'04 Aug 2026'},
 ];
 const levelTag = {
-  'Parent':     '<span class="lvl strong">Parent</span>',
+  'Parent':     '<span class="lvl">Parent</span>',
   'Child':      '<span class="lvl">Child</span>',
   'Unparented': '<span class="lvl">Unparented</span>'
 };
@@ -606,14 +591,34 @@ function renderChosen(){
     const diff = e.amt - current.amt;
     slot.innerHTML = `<div class="chosen">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div class="k">Will write to this expected transaction</div>
+        <div class="k">We will link</div>
         <button class="clear-x" onclick="clearChoice()" title="Clear selection">Clear</button>
       </div>
-      <div class="v">${e.payer} → ${e.payee}</div>
-      <div class="r"><span>Expected</span><span class="num">${money(e.amt)}</span></div>
-      <div class="r"><span>Received</span><span class="num">${money(current.amt)}</span></div>
-      <div class="r"><span>Difference</span><span class="num" style="color:${diff===0?'var(--green)':'var(--amber)'}">${diff===0?'None':diff.toFixed(2)}</span></div>
-      <div class="write-note">Sets <span class="mono">transaction_id</span> on this record</div>
+
+      <div class="side-lbl">This expected transaction</div>
+      <div class="side-box">
+        <div class="r"><span>Amount</span><span class="num">${money(e.amt)}</span></div>
+        <div class="r"><span>Reference</span><span class="mono">${e.ref}</span></div>
+        <div class="r"><span>Payer</span><span>${e.payer}</span></div>
+        <div class="r"><span>Payee</span><span>${e.payee}</span></div>
+        <div class="r"><span>Level</span><span>${e.level}</span></div>
+      </div>
+
+      <div class="joiner">to</div>
+
+      <div class="side-lbl">This transaction</div>
+      <div class="side-box">
+        <div class="r"><span>Amount</span><span class="num">${money(current.amt)}</span></div>
+        <div class="r"><span>Reference</span><span class="mono">${current.ref}</span></div>
+        <div class="r"><span>Payer</span><span>${current.lender}</span></div>
+        <div class="r"><span>Payee</span><span>${current.payee}</span></div>
+        <div class="r"><span>Date</span><span>${current.date}</span></div>
+      </div>
+
+      <div class="write-note">${diff===0
+        ? 'Amounts agree.'
+        : `Difference of <b>${(diff>0?'+':'')+diff.toFixed(2)}</b> between the two.`}
+        Sets <span class="mono">transaction_id</span> on the expected transaction.</div>
     </div>`;
     if(!el('outcome').value) el('outcome').selectedIndex = 1;
   }
@@ -631,7 +636,7 @@ function renderKeys(){
 }
 function renderSelBars(){
   const html = chosen
-    ? `<div class="selbar"><span>Selected <b>${money((pool.find(p=>p.id===chosen)||potential.find(p=>p.id===chosen)).amt)}</b> expected transaction — only one expected transaction can be linked.</span><span style="flex:1"></span><button class="clear-x" onclick="clearChoice()">Clear selection</button></div>`
+    ? `<div class="selbar"><span style="flex:1"></span><button class="clear-x" onclick="clearChoice()">Clear selection</button></div>`
     : '';
   el('selbar-pot').innerHTML = html;
   el('selbar-pool').innerHTML = html;

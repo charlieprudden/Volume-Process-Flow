@@ -53,7 +53,8 @@
   .qrow-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
   .qrow-payer{font-weight:600;font-size:13px;letter-spacing:-.01em}
   .qrow-amt{font-variant-numeric:tabular-nums;font-weight:600;font-size:13px}
-  .qrow-sub{display:flex;justify-content:space-between;margin-top:3px;color:var(--ink-3);font-size:11.5px}
+  .qrow-sub{display:flex;justify-content:space-between;gap:8px;margin-top:3px;color:var(--ink-3);font-size:11.5px}
+  .qrow-state{margin-top:5px;font-size:11.5px;font-weight:600;color:var(--ink-2);text-transform:capitalize}
 
   /* ---------- main ---------- */
   .main{flex:1;display:flex;flex-direction:column;min-width:0}
@@ -94,6 +95,12 @@
   .ctl-in{border:1px solid var(--line);border-radius:7px;padding:6px 10px;font:inherit;font-size:12.5px;min-width:190px}
   .ctl-in::placeholder{color:var(--ink-3)}
   .spacer{flex:1}
+  .ctl-sel{border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 28px 6px 10px;font:inherit;font-size:12.5px;color:var(--ink-2);cursor:pointer;
+    appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238a94a6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 10px center}
+  .ctl-sel:hover{border-color:#c3cbd9}
+  .ctl-sel.on{border-color:var(--blue-line);background-color:var(--blue-soft);color:var(--blue);font-weight:500}
   .hint{font-size:12px;color:var(--ink-3)}
 
   table{width:100%;border-collapse:collapse;background:var(--card)}
@@ -111,9 +118,10 @@
   .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
   .sub{color:var(--ink-3);font-size:11.5px;margin-top:3px;white-space:nowrap}
   td.col-ref{min-width:132px;white-space:nowrap}
-  td.col-diff{min-width:124px;white-space:nowrap}
+  td.col-amt{min-width:138px;white-space:nowrap}
+  td.col-amt .num{font-weight:600}
   th.col-ref{min-width:132px}
-  th.col-diff{min-width:124px}
+  th.col-amt{min-width:138px}
   tbody td{white-space:nowrap}
   .pane{overflow:auto}
   .card{overflow-x:auto}
@@ -183,7 +191,25 @@
   .keystrip .kk{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
   .keystrip .kv{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:7px}
   .keystrip .kv em{font-style:normal;font-size:11.5px;font-weight:500;color:var(--ink-3)}
-  .chdiff{text-decoration:none;background:#fee4e2;color:#b42318;border-radius:3px;padding:0 1px;font-weight:700}
+  .chdiff{text-decoration:none;color:#b42318;font-weight:700;border-bottom:2px solid #f5b5ae}
+  .lvl{font-size:12.5px;color:var(--ink-2)}
+  .lvl.strong{font-weight:600;color:var(--ink)}
+  .ty{font-size:12.5px;color:var(--ink-2)}
+  .ty.strong{font-weight:600;color:var(--ink)}
+  .ty.muted{color:var(--ink-3)}
+  .sig-g{color:var(--green)}
+  .sig-a{color:var(--amber)}
+  .sig-n{color:var(--ink-3);font-weight:500}
+  .stat{font-size:12.5px;font-weight:600;color:var(--ink-2)}
+  th[data-s]{position:relative;padding-right:20px}
+  th[data-dir]{color:var(--ink)}
+  th[data-dir]::after{position:absolute;right:8px;font-size:10px}
+  th[data-dir="asc"]::after{content:"\2191"}
+  th[data-dir="desc"]::after{content:"\2193"}
+  /* funnel: single accent, no competing fills */
+  .fcell.hit{border-color:var(--line);background:var(--card)}
+  .fcell.hit .n{color:var(--ink)}
+  .fcell:last-child .n{color:var(--ink-3)}
   .rail-foot{padding:13px 16px;border-top:1px solid var(--line-soft);display:flex;gap:8px}
   .btn{flex:1;border-radius:7px;padding:9px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink-2)}
   .btn:hover{border-color:#c3cbd9}
@@ -257,7 +283,7 @@
         <div class="card">
           <div class="card-head">
             <div><h3>Transaction data</h3><p>Read only — as received from the bank feed</p></div>
-            <span class="tag n" id="a-status">Cleared</span>
+            <span class="stat" id="a-status">Cleared</span>
           </div>
           <div class="grid" id="actual-grid"></div>
         </div>
@@ -284,23 +310,25 @@
 
       <!-- POTENTIAL -->
       <div class="panel" data-p="potential">
-        <div class="screen-note"><b>What this tab is for.</b> Every candidate the matcher recorded. Today the workflow writes one row for <b>every</b> unlinked expected transaction from this lender, so this is the payer-tier set — so every row would currently read <b>Payer only</b>. The type column uses the three options already declared on the object.</div>
+        <div class="screen-note"><b>What this tab is for.</b> Every candidate the matcher recorded. Today the workflow writes one row for <b>every</b> unlinked expected transaction from this lender, so this is the payer-tier set — so every row would currently read <b>Payer only</b>. The type column uses the three options declared on the object. Reference is tested as exact match or not set — the workflow does no partial or fuzzy comparison.</div>
         <div class="toolbar">
-          <input class="ctl-in" placeholder="Filter by payee, reference or amount…">
-          <button class="ctl act">All types</button>
-          <button class="ctl">Payer and reference</button>
-          <button class="ctl">Payer and amount</button>
-          <button class="ctl">Payer only</button>
+          <input class="ctl-in" id="q-pot" placeholder="Filter by payee, reference or amount…">
+          <select class="ctl-sel" id="f-pot" data-f="pot">
+            <option value="all">Type: all</option>
+            <option value="payer_and_reference">Payer and reference</option>
+            <option value="payer_and_amount">Payer and amount</option>
+            <option value="payer_only">Payer only</option>
+          </select>
           <div class="spacer"></div>
-          <span class="hint">9 candidates</span>
+          <span class="hint" id="count-pot"></span>
         </div>
         <div id="keys-pot"></div>
         <div id="selbar-pot"></div>
         <div class="card">
           <table>
             <thead><tr>
-              <th style="width:34px"></th><th class="col-ref">Reference</th><th>Expected amount</th><th class="col-diff">Difference</th>
-              <th>Payee</th><th>Level</th><th>Type</th>
+              <th style="width:34px"></th><th class="col-ref" data-s="pot" data-k="ref">Reference</th><th class="col-amt" data-s="pot" data-k="amt">Expected amount</th>
+              <th data-s="pot" data-k="payee">Payee</th><th data-s="pot" data-k="level">Level</th><th data-s="pot" data-k="type">Type</th>
             </tr></thead>
             <tbody id="pot-rows"></tbody>
           </table>
@@ -311,21 +339,23 @@
       <div class="panel" data-p="pool">
         <div class="screen-note"><b>What this tab is for.</b> Every unlinked expected transaction, not just the shortlist. Use it when the right one didn't make the candidate list — for example when the amount differs by more than 5%.</div>
         <div class="toolbar">
-          <input class="ctl-in" placeholder="Search payee, reference or amount…">
-          <button class="ctl act">Same lender</button>
-          <button class="ctl">Any lender</button>
-          <button class="ctl">Unparented only</button>
-          <button class="ctl">Parents only</button>
+          <input class="ctl-in" id="q-pool" placeholder="Search payee, reference or amount…">
+          <select class="ctl-sel" id="f-pool" data-f="pool">
+            <option value="all">Level: all</option>
+            <option value="Parent">Parent</option>
+            <option value="Child">Child</option>
+            <option value="Unparented">Unparented</option>
+          </select>
           <div class="spacer"></div>
-          <span class="hint">9 of 214 shown</span>
+          <span class="hint" id="count-pool"></span>
         </div>
         <div id="keys-pool"></div>
         <div id="selbar-pool"></div>
         <div class="card">
           <table>
             <thead><tr>
-              <th style="width:34px"></th><th class="col-ref">Reference</th><th>Expected amount</th><th class="col-diff">Difference</th>
-              <th>Payee</th><th>Level</th><th>Raised</th>
+              <th style="width:34px"></th><th class="col-ref" data-s="pool" data-k="ref">Reference</th><th class="col-amt" data-s="pool" data-k="amt">Expected amount</th>
+              <th data-s="pool" data-k="payee">Payee</th><th data-s="pool" data-k="level">Level</th><th data-s="pool" data-k="raised">Raised</th>
             </tr></thead>
             <tbody id="pool-rows"></tbody>
           </table>
@@ -342,7 +372,7 @@
               <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>Transaction created from ShieldPay notification</td></tr>
               <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>Payee set to Alawco Client Account</td></tr>
               <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>Payer resolved to Black Horse Limited via alias “BLACKHORSE”</td></tr>
-              <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>Match search run — outcome <span class="tag a">close_matches_found</span></td></tr>
+              <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>Match search run — outcome <b class="mono">close_matches_found</b></td></tr>
               <tr><td class="num">14 Aug 2026, 16:14</td><td>System</td><td>4 potential matches recorded</td></tr>
             </tbody>
           </table>
@@ -406,8 +436,8 @@ const txns = [
 
 const potential = [
   {id:'e1', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:456.86, ref:'3323532', src:'Payment advice', level:'Child', type:'payer_and_reference'},
-  {id:'e2', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:456.86, ref:'3323522', src:'Payment advice', level:'Child', type:'payer_and_reference'},
-  {id:'e3', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:507.62, ref:'3323540', src:'Payment advice', level:'Child', type:'payer_only'},
+  {id:'e2', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:456.86, ref:'3323601', src:'Payment advice', level:'Child', type:'payer_and_reference'},
+  {id:'e3', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:507.62, ref:'3323777', src:'Payment advice', level:'Child', type:'payer_only'},
   {id:'e4', payer:'Black Horse Limited', payee:'M. Kaur',               amt:461.00, ref:'—',       src:'Offer acceptance', level:'Unparented', type:'payer_and_amount'},
   {id:'e5', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:398.20, ref:'3323544', src:'Payment advice', level:'Child', type:'payer_only'},
   {id:'e6', payer:'Black Horse Limited', payee:'—',                     amt:520.00, ref:'—',       src:'Offer acceptance', level:'Unparented', type:'payer_only'},
@@ -417,15 +447,15 @@ const potential = [
 ];
 // potential_matches.type — declared options on the object
 const typeTag = {
-  payer_and_reference: '<span class="tag b">Payer and reference</span>',
-  payer_and_amount:    '<span class="tag a">Payer and amount</span>',
-  payer_only:          '<span class="tag n">Payer only</span>'
+  payer_and_reference: '<span class="ty strong">Payer and reference</span>',
+  payer_and_amount:    '<span class="ty">Payer and amount</span>',
+  payer_only:          '<span class="ty muted">Payer only</span>'
 };
 
 const pool = [
   {id:'e1', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:456.86, ref:'3323532', level:'Child', raised:'11 Aug 2026'},
-  {id:'e2', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:456.86, ref:'3323522', level:'Child', raised:'11 Aug 2026'},
-  {id:'e3', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:507.62, ref:'3323540', level:'Child', raised:'09 Aug 2026'},
+  {id:'e2', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:456.86, ref:'3323601', level:'Child', raised:'11 Aug 2026'},
+  {id:'e3', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:507.62, ref:'3323777', level:'Child', raised:'09 Aug 2026'},
   {id:'e4', payer:'Black Horse Limited', payee:'M. Kaur',               amt:461.00, ref:'—',       level:'Unparented', raised:'08 Aug 2026'},
   {id:'e5', payer:'Black Horse Limited', payee:'Alawco Client Account', amt:398.20, ref:'3323544', level:'Child', raised:'08 Aug 2026'},
   {id:'e6', payer:'Black Horse Limited', payee:'—',                     amt:520.00, ref:'—',       level:'Unparented', raised:'07 Aug 2026'},
@@ -434,37 +464,27 @@ const pool = [
   {id:'e9', payer:'Black Horse Limited', payee:'—',                     amt:333.15, ref:'—',       level:'Unparented', raised:'04 Aug 2026'},
 ];
 const levelTag = {
-  'Parent':     '<span class="tag b">Parent</span>',
-  'Child':      '<span class="tag n">Child</span>',
-  'Unparented': '<span class="tag a">Unparented</span>'
+  'Parent':     '<span class="lvl strong">Parent</span>',
+  'Child':      '<span class="lvl">Child</span>',
+  'Unparented': '<span class="lvl">Unparented</span>'
 };
 
 function refCompare(candRef, txnRef){
-  if(candRef==='—' || txnRef==='—') return {cls:'n', label:'Not set', detail:''};
-  if(candRef===txnRef)              return {cls:'g', label:'Exact', detail:''};
-  if(candRef.length===txnRef.length){
-    let diffs=[], html='';
-    for(let i=0;i<candRef.length;i++){
-      const same = candRef[i]===txnRef[i];
-      if(!same) diffs.push(i);
-      html += same ? candRef[i] : '<u class="chdiff">'+candRef[i]+'</u>';
-    }
-    if(diffs.length<=2) return {cls:'a', label:diffs.length+' char diff', detail:html};
-  }
-  if(candRef.replace(/[^0-9]/g,'')===txnRef.replace(/[^0-9]/g,''))
-    return {cls:'a', label:'Format only', detail:''};
-  return {cls:'n', label:'Different', detail:''};
+  // The workflow only ever tests: reference IS NULL, or reference = transaction reference.
+  // No fuzzy or partial comparison exists. This mirrors that exactly.
+  if(candRef==='—')      return {cls:'n', label:'Not set'};
+  if(candRef===txnRef)   return {cls:'g', label:'Matches'};
+  return {cls:'n', label:'Different'};
 }
 
+// Amount difference is simple arithmetic on two stored fields — computed for display.
+// The workflow's tolerance band is: expected >= actual AND expected < actual x 1.05
 function amtCompare(candAmt, txnAmt){
-  const d = +(txnAmt - candAmt).toFixed(2);
-  if(d===0) return {cls:'g', label:'Exact', note:''};
-  const pct = Math.abs(d)/candAmt;
-  const asTax = +(candAmt*0.20).toFixed(2);
-  if(Math.abs(Math.abs(d) - asTax) < 0.05)
-    return {cls:'a', label:(d>0?'+':'')+d.toFixed(2), note:'= 20% tax'};
-  if(pct<=0.05) return {cls:'a', label:(d>0?'+':'')+d.toFixed(2), note:(pct*100).toFixed(1)+'% out'};
-  return {cls:'n', label:(d>0?'+':'')+d.toFixed(2), note:(pct*100).toFixed(0)+'% out'};
+  const d = +(candAmt - txnAmt).toFixed(2);          // expected minus actual
+  if(d===0) return {cls:'g', label:'Matches'};
+  const inBand = (candAmt >= txnAmt) && (candAmt < txnAmt*1.05);
+  const sign = (d>0?'+':'') + d.toFixed(2);
+  return {cls: inBand?'a':'n', label: sign + (inBand ? ' — within tolerance' : ' — outside tolerance')};
 }
 
 let current = txns[0], chosen = null;
@@ -475,7 +495,8 @@ function renderQueue(){
   el('queue').innerHTML = txns.map(t => `
     <div class="qrow ${t.id===current.id?'on':''}" onclick="pick('${t.id}')">
       <div class="qrow-top"><span class="qrow-payer">${t.payer}</span><span class="qrow-amt num">${money(t.amt)}</span></div>
-      <div class="qrow-sub"><span>${t.date}</span><span class="tag ${t.tone}" style="font-size:10.5px;padding:1px 7px">${t.outcome.replace(/_/g,' ')}</span></div>
+      <div class="qrow-sub"><span class="mono">${t.ref}</span><span>${t.date}</span></div>
+      <div class="qrow-state">${t.outcome.replace(/_/g,' ').replace(/[()]/g,'')}</div>
     </div>`).join('');
 }
 
@@ -502,7 +523,7 @@ function renderSearch(){
     `<div class="fcell ${c}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
   el('search-rows').innerHTML = `
     <tr><td class="num">14 Aug 2026, 16:14</td>
-      <td><span class="tag a">close_matches_found</span></td>
+      <td><b class="mono">close_matches_found</b></td>
       <td class="num">9</td><td class="num">3</td><td class="num">2</td><td class="num">0</td></tr>`;
 }
 
@@ -511,13 +532,48 @@ function row(sel, id, cells){
     <td><span class="radio"></span></td>${cells}</tr>`;
 }
 
+const view = {
+  pot:  {q:'', f:'all', sort:null, dir:1},
+  pool: {q:'', f:'all', sort:null, dir:1}
+};
+
+function applyView(rows, v, fKey){
+  let out = rows.slice();
+  if(v.f !== 'all') out = out.filter(r => r[fKey] === v.f);
+  if(v.q.trim()){
+    const q = v.q.trim().toLowerCase();
+    out = out.filter(r =>
+      String(r.ref).toLowerCase().includes(q) ||
+      String(r.payee).toLowerCase().includes(q) ||
+      String(r.amt).includes(q) ||
+      String(r.level).toLowerCase().includes(q));
+  }
+  if(v.sort){
+    const k = v.sort;
+    out.sort((a,b)=>{
+      const x=a[k], y=b[k];
+      const r = (typeof x==='number' && typeof y==='number') ? x-y : String(x).localeCompare(String(y));
+      return r * v.dir;
+    });
+  }
+  return out;
+}
+
+function emptyRow(cols, msg){
+  return `<tr><td colspan="${cols}" style="padding:26px 14px;text-align:center;color:var(--ink-3)">${msg}</td></tr>`;
+}
+
 function renderPotential(){
-  el('pot-rows').innerHTML = potential.map(p => {
+  const rows = applyView(potential, view.pot, 'type');
+  el('count-pot').textContent = rows.length === potential.length
+    ? `${potential.length} candidates`
+    : `${rows.length} of ${potential.length} candidates`;
+  if(!rows.length){ el('pot-rows').innerHTML = emptyRow(6,'No candidates match these filters.'); return; }
+  el('pot-rows').innerHTML = rows.map(p => {
     const a = amtCompare(p.amt, current.amt), r = refCompare(p.ref, current.ref);
     return row('pot', p.id, `
-      <td class="col-ref"><div class="mono">${r.detail || p.ref}</div><div class="sub"><span class="tag ${r.cls}" style="font-size:10.5px;padding:1px 7px">${r.label}</span></div></td>
-      <td class="num">${money(p.amt)}</td>
-      <td class="col-diff"><span class="tag ${a.cls}">${a.label}</span>${a.note?`<div class="sub">${a.note}</div>`:''}</td>
+      <td class="col-ref"><div class="mono">${p.ref}</div><div class="sub sig-${r.cls}">${r.label}</div></td>
+      <td class="col-amt"><div class="num">${money(p.amt)}</div><div class="sub sig-${a.cls}">${a.label}</div></td>
       <td>${p.payee}</td>
       <td>${levelTag[p.level]}</td>
       <td>${typeTag[p.type]}</td>`);
@@ -525,12 +581,16 @@ function renderPotential(){
 }
 
 function renderPool(){
-  el('pool-rows').innerHTML = pool.map(p => {
+  const rows = applyView(pool, view.pool, 'level');
+  el('count-pool').textContent = rows.length === pool.length
+    ? `${pool.length} expected transactions`
+    : `${rows.length} of ${pool.length} shown`;
+  if(!rows.length){ el('pool-rows').innerHTML = emptyRow(6,'No expected transactions match these filters.'); return; }
+  el('pool-rows').innerHTML = rows.map(p => {
     const a = amtCompare(p.amt, current.amt), r = refCompare(p.ref, current.ref);
     return row('pool', p.id, `
-      <td class="col-ref"><div class="mono">${r.detail || p.ref}</div><div class="sub"><span class="tag ${r.cls}" style="font-size:10.5px;padding:1px 7px">${r.label}</span></div></td>
-      <td class="num">${money(p.amt)}</td>
-      <td class="col-diff"><span class="tag ${a.cls}">${a.label}</span>${a.note?`<div class="sub">${a.note}</div>`:''}</td>
+      <td class="col-ref"><div class="mono">${p.ref}</div><div class="sub sig-${r.cls}">${r.label}</div></td>
+      <td class="col-amt"><div class="num">${money(p.amt)}</div><div class="sub sig-${a.cls}">${a.label}</div></td>
       <td>${p.payee}</td>
       <td>${levelTag[p.level]}</td>
       <td class="num">${p.raised}</td>`);
@@ -603,11 +663,39 @@ document.querySelectorAll('#tabs .tab').forEach(tab=>{
   });
 });
 
+// filter dropdowns
+document.querySelectorAll('.ctl-sel[data-f]').forEach(sel=>{
+  sel.addEventListener('change', ()=>{
+    view[sel.dataset.f].f = sel.value;
+    sel.classList.toggle('on', sel.value !== 'all');
+    renderPotential(); renderPool();
+  });
+});
+
+// search boxes
+['pot','pool'].forEach(k=>{
+  el('q-'+k).addEventListener('input', e=>{
+    view[k].q = e.target.value;
+    renderPotential(); renderPool();
+  });
+});
+
+// sortable headers
+document.querySelectorAll('th[data-s]').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const v = view[th.dataset.s], k = th.dataset.k;
+    v.dir = (v.sort === k) ? -v.dir : 1;
+    v.sort = k;
+    th.parentElement.querySelectorAll('th[data-s]').forEach(o=>o.removeAttribute('data-dir'));
+    th.setAttribute('data-dir', v.dir === 1 ? 'asc' : 'desc');
+    renderPotential(); renderPool();
+  });
+});
+
+// remaining buttons (match search tab) keep their cosmetic toggle
 document.querySelectorAll('.ctl').forEach(c=>{
   c.addEventListener('click', ()=>{
-    if(c.classList.contains('ctl-in')) return;
-    const sibs = c.parentElement.querySelectorAll('.ctl');
-    sibs.forEach(s=>s.classList.remove('act'));
+    c.parentElement.querySelectorAll('.ctl').forEach(s=>s.classList.remove('act'));
     c.classList.add('act');
   });
 });
